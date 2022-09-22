@@ -6,7 +6,3 @@ terraform {
     }
   }
 }
-
-provider "gitlab" {
-  token = "glpat-sj3DMGaoDxrRWFxzwett" // your gitlab Personal access token
-}
