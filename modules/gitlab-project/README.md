@@ -5,15 +5,6 @@
 ## Configuration of provider
 ```bash
 
-terraform {
-  required_providers {
-    gitlab = {
-      source  = "gitlabhq/gitlab"
-      version = ">3.0.0"
-    }
-  }
-}
-
 provider "gitlab" {
   token = ""  // your gitlab Personal access token
 }
@@ -80,7 +71,7 @@ module "gitlab_project" {
   token                                            = true
   ref                                              = "main"
   cron                                             = "0 1 * * *"
-  pipline_schedule_key                             = "EXAMPLE_KEY
+  pipline_schedule_key                             = "EXAMPLE_KEY"
   pipline_schedule_value                           = "EXAMPLE_VALUE"
   branch_name                                      = "das-meta"
 
@@ -89,13 +80,15 @@ module "gitlab_project" {
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
-No requirements.
+| Name | Version |
+|------|---------|
+| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | >3.0.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | n/a |
+| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | >3.0.0 |
 
 ## Modules
 
@@ -105,14 +98,14 @@ No modules.
 
 | Name | Type |
 |------|------|
-| [gitlab_branch.branch](https://registry.terraform.io/providers/hashicorp/gitlab/latest/docs/resources/branch) | resource |
-| [gitlab_branch_protection.branch_protection](https://registry.terraform.io/providers/hashicorp/gitlab/latest/docs/resources/branch_protection) | resource |
-| [gitlab_pipeline_schedule.pipline_schedule](https://registry.terraform.io/providers/hashicorp/gitlab/latest/docs/resources/pipeline_schedule) | resource |
-| [gitlab_pipeline_schedule_variable.pipline_schedule_variable](https://registry.terraform.io/providers/hashicorp/gitlab/latest/docs/resources/pipeline_schedule_variable) | resource |
-| [gitlab_pipeline_trigger.pipline_trigger](https://registry.terraform.io/providers/hashicorp/gitlab/latest/docs/resources/pipeline_trigger) | resource |
-| [gitlab_project.this](https://registry.terraform.io/providers/hashicorp/gitlab/latest/docs/resources/project) | resource |
-| [gitlab_project_hook.project_webhook](https://registry.terraform.io/providers/hashicorp/gitlab/latest/docs/resources/project_hook) | resource |
-| [gitlab_project_variable.project_variable](https://registry.terraform.io/providers/hashicorp/gitlab/latest/docs/resources/project_variable) | resource |
+| [gitlab_branch.branch](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/branch) | resource |
+| [gitlab_branch_protection.branch_protection](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/branch_protection) | resource |
+| [gitlab_pipeline_schedule.pipline_schedule](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/pipeline_schedule) | resource |
+| [gitlab_pipeline_schedule_variable.pipline_schedule_variable](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/pipeline_schedule_variable) | resource |
+| [gitlab_pipeline_trigger.pipline_trigger](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/pipeline_trigger) | resource |
+| [gitlab_project.this](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/project) | resource |
+| [gitlab_project_hook.project_webhook](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/project_hook) | resource |
+| [gitlab_project_variable.project_variable](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/project_variable) | resource |
 
 ## Inputs
 
