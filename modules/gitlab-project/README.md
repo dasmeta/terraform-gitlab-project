@@ -5,6 +5,15 @@
 ## Configuration of provider
 ```bash
 
+terraform {
+  required_providers {
+    gitlab = {
+      source  = "gitlabhq/gitlab"
+      version = ">3.0.0"
+    }
+  }
+}
+
 provider "gitlab" {
   token = ""  // your gitlab Personal access token
 }
@@ -15,7 +24,7 @@ provider "gitlab" {
 ```terraform
 module "gitlab_project" {
   source  = "dasmeta/project/gitlab//modules/gitlab-project"
-  version = "1.1.0"
+  version = "1.1.1"
 
   name                      = "test-project"
   description               = "Some test project"
@@ -32,7 +41,7 @@ module "gitlab_project" {
 ```terraform
 module "gitlab_project" {
   source  = "dasmeta/project/gitlab//modules/gitlab-project"
-  version = "1.1.0"
+  version = "1.1.1"
 
   name                                             = "test-project"
   description                                      = "Some test project"
@@ -54,7 +63,7 @@ module "gitlab_project" {
 ```terraform
 module "gitlab_project" {
   source  = "dasmeta/project/gitlab//modules/gitlab-project"
-  version = "1.1.0"
+  version = "1.1.1"
 
   name                                             = "test-project"
   description                                      = "Some test project"
