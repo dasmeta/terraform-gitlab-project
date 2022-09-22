@@ -32,10 +32,10 @@ variable "name" {
   type        = string
   description = "The name of the project to be created"
 
-  # validation {
-  #   condition     = can(regex("^[a-z0-9-]*$", var.name))
-  #   error_message = "Projects must be named in lowercase, using a-z, 0-9, and - (hyphen) symbols only."
-  # }
+  validation {
+    condition     = can(regex("^[a-z0-9-]*$", var.name))
+    error_message = "Projects must be named in lowercase, using a-z, 0-9, and - (hyphen) symbols only."
+  }
 }
 
 variable "approvals_before_merge" {
@@ -137,17 +137,17 @@ variable "push_rules" {
   }]
 }
 
-variable "gitlab_token" {
-  description = "An Personal Access Token."
-  type        = string
-  default     = "glpat-sj3DMGaoDxrRWFxzwett"
-}
+# variable "gitlab_token" {
+#   description = "An Personal Access Token."
+#   type        = string
+#   default     = ""
+# }
 
-variable "username" {
-  description = "A username of you account."
-  type        = string
-  default     = "0katrinpetrosyan0"
-}
+# variable "username" {
+#   description = "A username of you account."
+#   type        = string
+#   default     = "0katrinpetrosyan0"
+# }
 
 variable "project_variable_key" {
   description = "(String) The name of the variable."

@@ -2,6 +2,90 @@
 
 # gitlab_project
 
+## Configuration of provider
+```bash
+
+terraform {
+  required_providers {
+    gitlab = {
+      source  = "gitlabhq/gitlab"
+      version = ">3.0.0"
+    }
+  }
+}
+
+provider "gitlab" {
+  token = ""  // your gitlab Personal access token
+}
+
+```
+## Minimal example of module
+
+```terraform
+module "gitlab_project" {
+  source  = "dasmeta/project/gitlab//modules/gitlab_project"
+  version = "0.0.1"
+
+  name                      = "test-project"
+  description               = "Some test project"
+  initialize_with_readme    = true
+  visibility_level          = "public"
+  approvals_before_merge    = 1
+  default_branch            = main
+  merge_method              = "ff"   <!-- `ff` to create fast-forward merges. Valid values are `merge`, `rebase_merge`, `ff`." -->
+}
+```
+
+## Some other example of usage to create variable
+
+```terraform
+module "gitlab_project" {
+  source  = "dasmeta/project/gitlab//modules/gitlab_project"
+  version = "0.0.1"
+
+  name                                             = "test-project"
+  description                                      = "Some test project"
+  visibility_level                                 = "private"
+  create_variable                                  = true
+  only_allow_merge_if_all_discussions_are_resolved = true
+  only_allow_merge_if_pipeline_succeeds            = true
+  remove_source_branch_after_merge                 = true
+  project_variable_key                             = "project_variable_key"
+  project_variable_value                           = "project_variable_value"  
+  masked                                           = true
+  protected                                        = true
+
+}
+```
+
+## Some other example of usage with createing webhook, pipline, branch
+
+```terraform
+module "gitlab_project" {
+  source  = "dasmeta/project/gitlab//modules/gitlab_project"
+  version = "0.0.1"
+
+  name                                             = "test-project"
+  description                                      = "Some test project"
+  visibility_level                                 = "private"
+  create_webhook                                   = true
+  url                                              = "https://xxx.xxx"
+  confidential_issues_events                       = true
+  enable_ssl_verification                          = true
+  create_pipline                                   = true
+  create_branch                                    = true
+  job_events                                       = true
+  pipeline_events                                  = true
+  push_events                                      = true
+  token                                            = true
+  ref                                              = "main"
+  cron                                             = "0 1 * * *"
+  pipline_schedule_key                             = "EXAMPLE_KEY
+  pipline_schedule_value                           = "EXAMPLE_VALUE"
+  branch_name                                      = "das-meta"
+
+}
+```
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
@@ -49,7 +133,6 @@ No modules.
 | <a name="input_deployment_events"></a> [deployment\_events](#input\_deployment\_events) | (Boolean) Invoke the hook for deployment events. | `bool` | `false` | no |
 | <a name="input_description"></a> [description](#input\_description) | (Optional) A description of the project. | `string` | `"Repository for testing"` | no |
 | <a name="input_enable_ssl_verification"></a> [enable\_ssl\_verification](#input\_enable\_ssl\_verification) | (Boolean) Enable ssl verification when invoking the hook. | `bool` | `false` | no |
-| <a name="input_gitlab_token"></a> [gitlab\_token](#input\_gitlab\_token) | An Personal Access Token. | `string` | `"glpat-sj3DMGaoDxrRWFxzwett"` | no |
 | <a name="input_initialize_with_readme"></a> [initialize\_with\_readme](#input\_initialize\_with\_readme) | (Optional) Create main branch with first commit containing a README.md file. | `bool` | `false` | no |
 | <a name="input_issues_events"></a> [issues\_events](#input\_issues\_events) | (Boolean) Invoke the hook for issues events. | `bool` | `false` | no |
 | <a name="input_job_events"></a> [job\_events](#input\_job\_events) | (Boolean) Invoke the hook for job events. | `bool` | `false` | no |
@@ -82,7 +165,6 @@ No modules.
 | <a name="input_tag_push_events"></a> [tag\_push\_events](#input\_tag\_push\_events) | (Boolean) Invoke the hook for tag push events. | `bool` | `false` | no |
 | <a name="input_token"></a> [token](#input\_token) | (String, Sensitive) A token to present when invoking the hook. The token is not available for imported resources. | `bool` | `false` | no |
 | <a name="input_url"></a> [url](#input\_url) | (String) The url of the hook to invoke. | `string` | `"https://gitlab.com/dashboard/projects"` | no |
-| <a name="input_username"></a> [username](#input\_username) | A username of you account. | `string` | `"0katrinpetrosyan0"` | no |
 | <a name="input_visibility_level"></a> [visibility\_level](#input\_visibility\_level) | (Optional) Set to `public` to create a public project. Valid values are `private`, `internal`, `public`. | `string` | `"private"` | no |
 | <a name="input_wiki_enabled"></a> [wiki\_enabled](#input\_wiki\_enabled) | (Optional) Enable wiki for the project. | `bool` | `false` | no |
 
