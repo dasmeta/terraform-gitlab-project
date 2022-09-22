@@ -23,8 +23,8 @@ provider "gitlab" {
 
 ```terraform
 module "gitlab_project" {
-  source  = "dasmeta/project/gitlab//modules/gitlab_project"
-  version = "0.0.1"
+  source  = "dasmeta/project/gitlab//modules/gitlab-project"
+  version = "1.1.0"
 
   name                      = "test-project"
   description               = "Some test project"
@@ -40,8 +40,8 @@ module "gitlab_project" {
 
 ```terraform
 module "gitlab_project" {
-  source  = "dasmeta/project/gitlab//modules/gitlab_project"
-  version = "0.0.1"
+  source  = "dasmeta/project/gitlab//modules/gitlab-project"
+  version = "1.1.0"
 
   name                                             = "test-project"
   description                                      = "Some test project"
@@ -62,8 +62,8 @@ module "gitlab_project" {
 
 ```terraform
 module "gitlab_project" {
-  source  = "dasmeta/project/gitlab//modules/gitlab_project"
-  version = "0.0.1"
+  source  = "dasmeta/project/gitlab//modules/gitlab-project"
+  version = "1.1.0"
 
   name                                             = "test-project"
   description                                      = "Some test project"
