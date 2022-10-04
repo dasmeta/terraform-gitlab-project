@@ -1,5 +1,6 @@
 ## Introduction
-This Repository allows to manage the lifecycle of a gitlab project.
+
+This Repository allows to manage the lifecycle of a gitlab project. Create protected branch, add piplines, variables etc. 
 
 # gitlab_project
 
