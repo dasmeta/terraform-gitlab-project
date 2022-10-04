@@ -1,4 +1,5 @@
-
+## Introduction
+This Repository allows to manage the lifecycle of a gitlab project.
 
 # gitlab_project
 
