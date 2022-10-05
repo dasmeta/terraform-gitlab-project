@@ -137,28 +137,14 @@ variable "push_rules" {
   }]
 }
 
-# variable "gitlab_token" {
-#   description = "An Personal Access Token."
-#   type        = string
-#   default     = ""
-# }
-
-# variable "username" {
-#   description = "A username of you account."
-#   type        = string
-#   default     = "0katrinpetrosyan0"
-# }
-
 variable "project_variable_key" {
   description = "(String) The name of the variable."
   type        = string
-  default     = "project_variable_key"
 }
 
 variable "project_variable_value" {
   description = "(String, Sensitive) The value of the variable."
   type        = string
-  default     = "project_variable_value"
 }
 
 variable "masked" {
@@ -176,7 +162,6 @@ variable "protected" {
 variable "url" {
   description = "(String) The url of the hook to invoke."
   type        = string
-  default     = "https://gitlab.com/dashboard/projects"
 }
 
 variable "confidential_issues_events" {
@@ -278,13 +263,11 @@ variable "active" {
 variable "pipline_schedule_key" {
   description = "(String) Name of the variable."
   type        = string
-  default     = "EXAMPLE_KEY"
 }
 
 variable "pipline_schedule_value" {
   description = "(String) Value of the variable."
   type        = string
-  default     = "EXAMPLE_VALUE"
 }
 
 variable "pipline_trigger_description" {
