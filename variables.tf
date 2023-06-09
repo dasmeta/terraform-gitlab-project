@@ -38,6 +38,18 @@ variable "name" {
   }
 }
 
+variable "suggestion_commit_message" {
+  type = string
+  description = "The commit message used to apply merge request suggestions."
+  default = null
+}
+
+variable "merge_commit_template" {
+  type = string
+  description = "Template used to create merge commit message in merge requests."
+  default = null
+}
+
 variable "approvals_before_merge" {
   type        = string
   description = "(Optional) Number of merge request approvals required for merging. Default is 0."
