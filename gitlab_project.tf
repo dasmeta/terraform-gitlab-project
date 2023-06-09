@@ -32,7 +32,7 @@ resource "gitlab_project" "this" {
 
   suggestion_commit_message = var.suggestion_commit_message
   merge_commit_template     = var.merge_commit_template
-  
+
   dynamic "push_rules" {
     for_each = length(var.push_rules) > 0 ? var.push_rules : []
     content {

@@ -1,6 +1,6 @@
 ## Introduction
 
-This Repository allows to manage the lifecycle of a gitlab project. Create protected branch, add piplines, variables etc. 
+This Repository allows to manage the lifecycle of a gitlab project. Create protected branch, add piplines, variables etc.
 
 # gitlab_project
 
@@ -168,6 +168,7 @@ No modules.
 | <a name="input_lfs_enabled"></a> [lfs\_enabled](#input\_lfs\_enabled) | (Optional) Enable LFS for the project. | `bool` | `false` | no |
 | <a name="input_masked"></a> [masked](#input\_masked) | (Boolean) If set to true, the value of the variable will be hidden in job logs. The value must meet the masking requirements. Defaults to false. | `bool` | `false` | no |
 | <a name="input_merge_access_level"></a> [merge\_access\_level](#input\_merge\_access\_level) | (String) Access levels allowed to merge. Valid values are: no one, developer, maintainer. | `string` | `"maintainer"` | no |
+| <a name="input_merge_commit_template"></a> [merge\_commit\_template](#input\_merge\_commit\_template) | Template used to create merge commit message in merge requests. | `string` | `null` | no |
 | <a name="input_merge_method"></a> [merge\_method](#input\_merge\_method) | (Optional) Set to `ff` to create fast-forward merges. Valid values are `merge`, `rebase_merge`, `ff`. | `string` | `"ff"` | no |
 | <a name="input_merge_requests_events"></a> [merge\_requests\_events](#input\_merge\_requests\_events) | (Boolean) Invoke the hook for merge requests. | `bool` | `false` | no |
 | <a name="input_name"></a> [name](#input\_name) | The name of the project to be created | `string` | n/a | yes |
@@ -176,11 +177,11 @@ No modules.
 | <a name="input_packages_enabled"></a> [packages\_enabled](#input\_packages\_enabled) | (Optional) Enable packages repository for the project. | `bool` | `false` | no |
 | <a name="input_pages_access_level"></a> [pages\_access\_level](#input\_pages\_access\_level) | (Optional) Enable pages access control. Valid values are `disabled`, `private`, `enabled`, `public`. | `string` | `"private"` | no |
 | <a name="input_pipeline_events"></a> [pipeline\_events](#input\_pipeline\_events) | (Boolean) Invoke the hook for pipeline events. | `bool` | `false` | no |
-| <a name="input_pipline_schedule_key"></a> [pipline\_schedule\_key](#input\_pipline\_schedule\_key) | (String) Name of the variable. | `string` | `"EXAMPLE_KEY"` | no |
-| <a name="input_pipline_schedule_value"></a> [pipline\_schedule\_value](#input\_pipline\_schedule\_value) | (String) Value of the variable. | `string` | `"EXAMPLE_VALUE"` | no |
+| <a name="input_pipline_schedule_key"></a> [pipline\_schedule\_key](#input\_pipline\_schedule\_key) | (String) Name of the variable. | `string` | n/a | yes |
+| <a name="input_pipline_schedule_value"></a> [pipline\_schedule\_value](#input\_pipline\_schedule\_value) | (String) Value of the variable. | `string` | n/a | yes |
 | <a name="input_pipline_trigger_description"></a> [pipline\_trigger\_description](#input\_pipline\_trigger\_description) | (String) The description of the pipeline trigger. | `string` | `""` | no |
-| <a name="input_project_variable_key"></a> [project\_variable\_key](#input\_project\_variable\_key) | (String) The name of the variable. | `string` | `"project_variable_key"` | no |
-| <a name="input_project_variable_value"></a> [project\_variable\_value](#input\_project\_variable\_value) | (String, Sensitive) The value of the variable. | `string` | `"project_variable_value"` | no |
+| <a name="input_project_variable_key"></a> [project\_variable\_key](#input\_project\_variable\_key) | (String) The name of the variable. | `string` | n/a | yes |
+| <a name="input_project_variable_value"></a> [project\_variable\_value](#input\_project\_variable\_value) | (String, Sensitive) The value of the variable. | `string` | n/a | yes |
 | <a name="input_protected"></a> [protected](#input\_protected) | (Boolean) If set to true, the variable will be passed only to pipelines running on protected branches and tags. Defaults to false. | `bool` | `false` | no |
 | <a name="input_push_access_level"></a> [push\_access\_level](#input\_push\_access\_level) | (String) Access levels allowed to push. Valid values are: no one, developer, maintainer. | `string` | `"maintainer"` | no |
 | <a name="input_push_events"></a> [push\_events](#input\_push\_events) | (Boolean) Invoke the hook for push events. | `bool` | `false` | no |
@@ -191,13 +192,16 @@ No modules.
 | <a name="input_remove_source_branch_after_merge"></a> [remove\_source\_branch\_after\_merge](#input\_remove\_source\_branch\_after\_merge) | (Optional) Enable `Delete source branch` option by default for all new merge requests. | `bool` | `true` | no |
 | <a name="input_request_access_enabled"></a> [request\_access\_enabled](#input\_request\_access\_enabled) | (Optional) Allow users to request member access. | `bool` | `true` | no |
 | <a name="input_snippets_enabled"></a> [snippets\_enabled](#input\_snippets\_enabled) | (Optional) Enable snippets for the project. | `bool` | `false` | no |
+| <a name="input_suggestion_commit_message"></a> [suggestion\_commit\_message](#input\_suggestion\_commit\_message) | The commit message used to apply merge request suggestions. | `string` | `null` | no |
 | <a name="input_tag_push_events"></a> [tag\_push\_events](#input\_tag\_push\_events) | (Boolean) Invoke the hook for tag push events. | `bool` | `false` | no |
 | <a name="input_token"></a> [token](#input\_token) | (String, Sensitive) A token to present when invoking the hook. The token is not available for imported resources. | `bool` | `false` | no |
-| <a name="input_url"></a> [url](#input\_url) | (String) The url of the hook to invoke. | `string` | `"https://gitlab.com/dashboard/projects"` | no |
+| <a name="input_url"></a> [url](#input\_url) | (String) The url of the hook to invoke. | `string` | n/a | yes |
 | <a name="input_visibility_level"></a> [visibility\_level](#input\_visibility\_level) | (Optional) Set to `public` to create a public project. Valid values are `private`, `internal`, `public`. | `string` | `"private"` | no |
 | <a name="input_wiki_enabled"></a> [wiki\_enabled](#input\_wiki\_enabled) | (Optional) Enable wiki for the project. | `bool` | `false` | no |
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+|------|-------------|
+| <a name="output_gitlab_project_id"></a> [gitlab\_project\_id](#output\_gitlab\_project\_id) | n/a |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
