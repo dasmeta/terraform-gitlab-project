@@ -2,55 +2,48 @@ locals {
   create = var.create
 }
 
-# data "gitlab_user" "username" {
-#   username = var.username
-# }
-
 resource "gitlab_project" "this" {
-  count = local.create ? 1 : 0
+  for_each = var.projects_enabled ? { for p in var.gitlab_projects : p.name => p } : {}
 
-  name        = var.name
-  description = var.description
-  # namespace_id = "56195749" // data.gitlab_user.username.namespace_id
+  name        = each.value.name
+  description = try(each.value.description, null)
 
-  visibility_level       = var.visibility_level
-  default_branch         = var.default_branch
-  initialize_with_readme = var.initialize_with_readme
-  request_access_enabled = var.request_access_enabled
-  lfs_enabled            = var.lfs_enabled
-  packages_enabled       = var.packages_enabled
-  snippets_enabled       = var.snippets_enabled
-  wiki_enabled           = var.wiki_enabled
+  visibility_level       = each.value.visibility_level
+  default_branch         = each.value.default_branch
+  initialize_with_readme = each.value.initialize_with_readme
+  request_access_enabled = each.value.request_access_enabled
+  lfs_enabled            = each.value.lfs_enabled
+  packages_enabled       = each.value.packages_enabled
 
-  merge_method                                     = var.merge_method
-  approvals_before_merge                           = var.approvals_before_merge
-  only_allow_merge_if_pipeline_succeeds            = var.only_allow_merge_if_pipeline_succeeds
-  only_allow_merge_if_all_discussions_are_resolved = var.only_allow_merge_if_all_discussions_are_resolved
-  remove_source_branch_after_merge                 = var.remove_source_branch_after_merge
+  squash_option = each.value.squash_option
+  merge_method  = each.value.merge_method
 
-  pages_access_level = var.pages_access_level
+  only_allow_merge_if_pipeline_succeeds = each.value.only_allow_merge_if_pipeline_succeeds
 
-  suggestion_commit_message = var.suggestion_commit_message
-  merge_commit_template     = var.merge_commit_template
+  only_allow_merge_if_all_discussions_are_resolved = each.value.only_allow_merge_if_all_discussions_are_resolved
+
+  remove_source_branch_after_merge = each.value.remove_source_branch_after_merge
+
+  pages_access_level = each.value.pages_access_level
+
+  suggestion_commit_message = try(each.value.suggestion_commit_message, null)
+  merge_commit_template     = try(each.value.merge_commit_template, null)
 
   dynamic "push_rules" {
-    for_each = length(var.push_rules) > 0 ? var.push_rules : []
+    for_each = each.value.push_rules
     content {
       author_email_regex            = try(push_rules.value.author_email_regex, null)
       branch_name_regex             = try(push_rules.value.branch_name_regex, null)
-      commit_committer_check        = try(push_rules.value.commit_committer_check, null)
+      commit_committer_check        = push_rules.value.commit_committer_check
       commit_message_negative_regex = try(push_rules.value.commit_message_negative_regex, null)
       commit_message_regex          = try(push_rules.value.commit_message_regex, null)
-      deny_delete_tag               = try(push_rules.value.deny_delete_tag, null)
+      deny_delete_tag               = push_rules.value.deny_delete_tag
       file_name_regex               = try(push_rules.value.file_name_regex, null)
       max_file_size                 = try(push_rules.value.max_file_size, null)
-      member_check                  = try(push_rules.value.member_check, null)
-      prevent_secrets               = try(push_rules.value.prevent_secrets, null)
-      reject_unsigned_commits       = try(push_rules.value.reject_unsigned_commits, null)
+      member_check                  = push_rules.value.member_check
+      prevent_secrets               = push_rules.value.prevent_secrets
+      reject_unsigned_commits       = push_rules.value.reject_unsigned_commits
     }
   }
 
-  lifecycle {
-    prevent_destroy = true
-  }
 }
