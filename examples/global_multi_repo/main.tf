@@ -1,7 +1,7 @@
 # Example: 30 GitLab repos with shared global env variables, pipeline and semantic-release
 # All config comes from files (templates/), not inline content.
 locals {
-  token = "pst token"
+  token = "glpat-D_d_se1UaQJmw447z-b91286MQp1OmR5aDQwCw.01.120d9z32e"
 }
 provider "gitlab" {
   token = local.token

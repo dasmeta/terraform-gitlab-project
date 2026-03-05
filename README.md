@@ -320,5 +320,7 @@ No modules.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+|------|-------------|
+| <a name="output_gitlab_project_ids"></a> [gitlab\_project\_ids](#output\_gitlab\_project\_ids) | Map of GitLab project name to project ID |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
