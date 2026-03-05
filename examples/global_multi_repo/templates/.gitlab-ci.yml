@@ -1,0 +1,26 @@
+stages:
+  - test
+  - release
+
+variables:
+  NODE_ENV: production
+
+cache:
+  paths:
+    - node_modules/
+
+test:
+  stage: test
+  image: node:18
+  script:
+    - npm ci
+    - npm test
+
+release:
+  stage: release
+  image: node:18
+  script:
+    - npm ci
+    - npx semantic-release
+  only:
+    - main

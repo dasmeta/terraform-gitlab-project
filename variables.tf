@@ -7,26 +7,21 @@ variable "create" {
 variable "create_variable" {
   type        = bool
   description = "Boolean to create the resource variable. Defaults to true."
-  default     = true
+  default     = false
 }
 
 variable "create_webhook" {
   type        = bool
   description = "Boolean to create the webhook. Defaults to true."
-  default     = true
+  default     = false
 }
 
 variable "create_pipline" {
   type        = bool
   description = "Boolean to create the pipline. Defaults to true."
-  default     = true
+  default     = false
 }
 
-variable "create_branch" {
-  type        = bool
-  description = "Boolean to create the branch. Defaults to true."
-  default     = true
-}
 
 variable "name" {
   type        = string
@@ -38,29 +33,6 @@ variable "name" {
   }
 }
 
-variable "suggestion_commit_message" {
-  type        = string
-  description = "The commit message used to apply merge request suggestions."
-  default     = null
-}
-
-variable "merge_commit_template" {
-  type        = string
-  description = "Template used to create merge commit message in merge requests."
-  default     = null
-}
-
-variable "approvals_before_merge" {
-  type        = string
-  description = "(Optional) Number of merge request approvals required for merging. Default is 0."
-  default     = 1
-}
-
-variable "default_branch" {
-  type        = string
-  description = "(Optional) The default branch the repository will use. Defaults to main."
-  default     = "main"
-}
 
 variable "description" {
   type        = string
@@ -68,95 +40,16 @@ variable "description" {
   default     = "Repository for testing"
 }
 
-variable "initialize_with_readme" {
-  type        = bool
-  description = "(Optional) Create main branch with first commit containing a README.md file."
-  default     = false
-}
-
-variable "lfs_enabled" {
-  type        = bool
-  description = "(Optional) Enable LFS for the project."
-  default     = false
-}
-
-variable "merge_method" {
-  type        = string
-  description = "(Optional) Set to `ff` to create fast-forward merges. Valid values are `merge`, `rebase_merge`, `ff`."
-  default     = "ff"
-}
-
-variable "only_allow_merge_if_all_discussions_are_resolved" {
-  type        = bool
-  description = "(Optional) Set to true if you want to allow merges only if all discussions are resolved."
-  default     = true
-}
-
-variable "only_allow_merge_if_pipeline_succeeds" {
-  type        = bool
-  description = "(Optional) Set to true if you want to allow merges only if a pipeline succeeds."
-  default     = true
-}
-
-variable "packages_enabled" {
-  type        = bool
-  description = "(Optional) Enable packages repository for the project."
-  default     = false
-}
-
-variable "pages_access_level" {
-  type        = string
-  description = "(Optional) Enable pages access control. Valid values are `disabled`, `private`, `enabled`, `public`."
-  default     = "private"
-}
-
-variable "remove_source_branch_after_merge" {
-  type        = bool
-  description = "(Optional) Enable `Delete source branch` option by default for all new merge requests."
-  default     = true
-}
-
-variable "request_access_enabled" {
-  type        = bool
-  description = "(Optional) Allow users to request member access."
-  default     = true
-}
-
-variable "snippets_enabled" {
-  type        = bool
-  description = "(Optional) Enable snippets for the project."
-  default     = false
-}
-
-variable "visibility_level" {
-  type        = string
-  description = "(Optional) Set to `public` to create a public project. Valid values are `private`, `internal`, `public`."
-  default     = "private"
-}
-
-variable "wiki_enabled" {
-  type        = bool
-  description = "(Optional) Enable wiki for the project."
-  default     = false
-}
-
-variable "push_rules" {
-  description = "An array containing the push rules object."
-  type        = list(object({}))
-  default = [{
-    commit_committer_check = true
-    prevent_secrets        = true
-  }]
-}
-
 variable "project_variable_key" {
   description = "(String) The name of the variable."
   type        = string
+  default     = null
 }
 
 variable "project_variable_value" {
   description = "(String, Sensitive) The value of the variable."
   type        = string
+  default     = null
 }
 
 variable "masked" {
@@ -174,6 +67,7 @@ variable "protected" {
 variable "url" {
   description = "(String) The url of the hook to invoke."
   type        = string
+  default     = null
 }
 
 variable "confidential_issues_events" {
@@ -275,11 +169,13 @@ variable "active" {
 variable "pipline_schedule_key" {
   description = "(String) Name of the variable."
   type        = string
+  default     = null
 }
 
 variable "pipline_schedule_value" {
   description = "(String) Value of the variable."
   type        = string
+  default     = null
 }
 
 variable "pipline_trigger_description" {
@@ -304,4 +200,131 @@ variable "push_access_level" {
   description = "(String) Access levels allowed to push. Valid values are: no one, developer, maintainer."
   type        = string
   default     = "maintainer"
+}
+
+variable "approval_rule" {
+  description = "Merge request approval rule configuration"
+  type = object({
+    enabled                           = bool
+    name                              = optional(string)
+    approvals_required                = optional(number)
+    applies_to_all_protected_branches = optional(bool)
+    user_ids                          = optional(list(number))
+    group_ids                         = optional(list(number))
+  })
+  default = {
+    enabled = false
+  }
+}
+
+variable "branch_protection" {
+  description = "Branch protection configuration"
+  type = object({
+    enabled                      = bool
+    branch                       = optional(string)
+    allow_force_push             = optional(bool)
+    push_access_level            = optional(string)
+    merge_access_level           = optional(string)
+    code_owner_approval_required = optional(bool)
+  })
+  default = {
+    enabled = false
+  }
+}
+
+variable "projects_enabled" {
+  type    = bool
+  default = true
+}
+
+# -----------------------------------------------------------------------------
+# Global settings applied to all projects (e.g. 30 repos with same CI and env)
+# -----------------------------------------------------------------------------
+
+variable "global_env_variables" {
+  description = "Environment variables applied to every GitLab project. Use for shared NPM_TOKEN, GITLAB_TOKEN, etc."
+  type = list(object({
+    key       = string
+    value     = string
+    masked    = optional(bool, false)
+    protected = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "global_repository_files" {
+  description = "Repository files applied to every project. Use content_file to load from disk (e.g. .gitlab-ci.yml, .releaserc.json). Path is typically path.module from the caller."
+  type = list(object({
+    file_path      = string
+    content_file   = optional(string) # path to file, e.g. \"${path.module}/templates/.gitlab-ci.yml\"
+    content        = optional(string) # inline content; one of content_file or content required
+    branch         = optional(string, "main")
+    commit_message = optional(string, "Managed by Terraform")
+    author_name    = optional(string)
+    author_email   = optional(string)
+  }))
+  default = []
+}
+
+variable "gitlab_projects" {
+  description = "List of GitLab project configurations"
+  type = list(object({
+    name        = string
+    description = optional(string)
+
+    visibility_level       = optional(string, "private")
+    default_branch         = optional(string, "main")
+    initialize_with_readme = optional(bool, false)
+    request_access_enabled = optional(bool, true)
+    prevent_destroy        = optional(bool, true)
+    lfs_enabled            = optional(bool, false)
+    packages_enabled       = optional(bool, false)
+
+    # Merge behavior
+    squash_option = optional(string, "default_on") # always | default_on | never
+    merge_method  = optional(string, "ff")         # merge | rebase_merge | ff
+
+    only_allow_merge_if_pipeline_succeeds            = optional(bool, true)
+    only_allow_merge_if_all_discussions_are_resolved = optional(bool, true)
+    remove_source_branch_after_merge                 = optional(bool, true)
+
+    pages_access_level = optional(string, "private")
+
+    suggestion_commit_message = optional(string)
+    merge_commit_template     = optional(string)
+
+    # Push rules (all optional)
+    push_rules = optional(list(object({
+      author_email_regex            = optional(string)
+      branch_name_regex             = optional(string)
+      commit_committer_check        = optional(bool, false)
+      commit_message_negative_regex = optional(string)
+      commit_message_regex          = optional(string)
+      deny_delete_tag               = optional(bool, false)
+      file_name_regex               = optional(string)
+      max_file_size                 = optional(number)
+      member_check                  = optional(bool, false)
+      prevent_secrets               = optional(bool, false)
+      reject_unsigned_commits       = optional(bool, false)
+    })), [])
+
+    # Project-level environment variables
+    env_variables = optional(list(object({
+      key       = string
+      value     = string
+      masked    = optional(bool, false)
+      protected = optional(bool, false)
+    })), [])
+
+    # Repository files to manage (e.g. .releaserc, .gitlab-ci.yml). Use content_file to load from disk.
+    repository_files = optional(list(object({
+      file_path      = string
+      content_file   = optional(string) # path to file from caller, e.g. path.module/templates/file
+      content        = optional(string) # inline content; one of content_file or content
+      branch         = optional(string, "main")
+      commit_message = optional(string, "Managed by Terraform")
+      author_name    = optional(string)
+      author_email   = optional(string)
+    })), [])
+  }))
 }

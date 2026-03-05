@@ -18,7 +18,7 @@ jobs:
       matrix:
         path:
           - /
-     
+
     steps:
     - uses: dasmeta/reusable-actions-workflows/tflint@main
       with:
