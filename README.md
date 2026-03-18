@@ -4,6 +4,54 @@ This Repository allows to manage the lifecycle of a gitlab project. Create prote
 
 # gitlab_project
 
+## Repository automation
+
+This repository uses GitHub Actions for its own validation, commit-policy, and
+release automation. The module can still manage `.gitlab-ci.yml` and
+`.releaserc.json` files for downstream GitLab projects, but those managed files
+are examples of module output, not this repository's CI runtime.
+
+## Local contributor workflow
+
+Install the tools required by the repository before opening a pull request:
+
+- `terraform`
+- `terraform-docs`
+- `pre-commit`
+- `node` and `npm`
+
+Install the local Node-based tooling from the repository root:
+
+```bash
+npm install
+```
+
+Enable the local git hooks:
+
+```bash
+git config core.hooksPath githooks
+```
+
+Run the same root-level validation flow locally that the repository expects in
+CI:
+
+```bash
+pre-commit run --all-files
+terraform fmt -check -recursive
+```
+
+Commit messages are validated with the repository-local `commitlint`
+configuration from `commitlint.config.js`. The `githooks/commit-msg` hook uses
+the dependencies installed by `npm install`; it does not install tooling for
+you.
+
+## Maintainer notes
+
+- `Pre-Commit`, `Terraform Test`, `Tflint`, `TFSEC`, and `Checkov` workflows
+  validate repository changes against the repository root layout.
+- `Commitlint` validates commit messages in CI.
+- `Semantic-Release` is the single release workflow for this repository.
+
 ## Configuration of provider
 ```bash
 
@@ -11,7 +59,7 @@ terraform {
   required_providers {
     gitlab = {
       source  = "gitlabhq/gitlab"
-      version = ">3.0.0"
+      version = ">= 18.8.2"
     }
   }
 }
@@ -226,21 +274,9 @@ module "gitlab_repos" {
 ```
 
 ## Requirements for pre-commit hooks
-for Run our pre-commit hooks you need to install
-	- terraform
-	- terraform-docs
-
-## Require for prevent wrong commit msg
-
-```bash
-npm install --global git-conventional-commits
-```
-
-## Config for GitHooks
-
-```bash
-git config core.hooksPath githooks
-```
+For local validation, install `terraform`, `terraform-docs`, `pre-commit`,
+`node`, and `npm`, then run `npm install` and `git config core.hooksPath
+githooks`.
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
@@ -253,7 +289,7 @@ git config core.hooksPath githooks
 
 | Name | Version |
 |------|---------|
-| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | 18.9.0 |
+| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | >= 18.8.2 |
 
 ## Modules
 

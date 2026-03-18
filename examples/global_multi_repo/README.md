@@ -34,6 +34,13 @@ Creates many GitLab projects (e.g. 30) with:
 - `templates/.gitlab-ci.yml` — pipeline used for all repos.
 - `templates/.releaserc.json` — semantic-release config used for all repos.
 - Edit these files to change CI/release for every repo at once.
+
+## Repository automation note
+
+This example manages GitLab CI and semantic-release files for downstream GitLab
+projects. The current repository's own validation, commit-policy, and release
+automation lives under `.github/workflows/` and is separate from these managed
+template files.
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 

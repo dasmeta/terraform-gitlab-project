@@ -1,4 +1,10 @@
 #!/bin/bash
 
 set -e
+
+if ! command -v pre-commit >/dev/null 2>&1; then
+  echo "pre-commit is required. Install it first, then run 'pre-commit run --all-files'." >&2
+  exit 1
+fi
+
 pre-commit run --show-diff-on-failure --color=always --all-files
