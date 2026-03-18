@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, master]
 jobs:
-  terraform-validate:
+  pre-commit:
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -19,5 +19,5 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        path: modules/${{ matrix.path }}
+        path: /
       continue-on-error: true

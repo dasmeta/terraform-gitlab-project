@@ -1,0 +1,14 @@
+.git/
+.github/
+.specify/
+.codex/
+specs/
+node_modules/
+*.log
+.env*
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/

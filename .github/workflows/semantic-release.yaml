@@ -1,5 +1,7 @@
-name:  Semantic-Release
-on: [pull_request, push]
+name: Semantic-Release
+on:
+  push:
+    branches: [main, master, next]
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -10,11 +12,11 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
       - name: Semantic Release
         uses: cycjimmy/semantic-release-action@v3
         env:
