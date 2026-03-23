@@ -41,7 +41,7 @@ terraform fmt -check -recursive
 ```
 
 Commit messages are validated with the repository-local `commitlint`
-configuration from `commitlint.config.js`. The `githooks/commit-msg` hook uses
+configuration from `commitlint.config.mjs`. The `githooks/commit-msg` hook uses
 the dependencies installed by `npm install`; it does not install tooling for
 you.
 
