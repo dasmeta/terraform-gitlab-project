@@ -1,273 +1,92 @@
 variable "create" {
   type        = bool
-  description = "Boolean to create the resource. Defaults to true."
   default     = true
-}
-
-variable "create_variable" {
-  type        = bool
-  description = "Boolean to create the resource variable. Defaults to true."
-  default     = false
-}
-
-variable "create_webhook" {
-  type        = bool
-  description = "Boolean to create the webhook. Defaults to true."
-  default     = false
-}
-
-variable "create_pipline" {
-  type        = bool
-  description = "Boolean to create the pipline. Defaults to true."
-  default     = false
-}
-
-
-variable "name" {
-  type        = string
-  description = "The name of the project to be created"
-
-  validation {
-    condition     = can(regex("^[a-z0-9-]*$", var.name))
-    error_message = "Projects must be named in lowercase, using a-z, 0-9, and - (hyphen) symbols only."
-  }
-}
-
-
-variable "description" {
-  type        = string
-  description = "(Optional) A description of the project."
-  default     = "Repository for testing"
-}
-
-variable "project_variable_key" {
-  description = "(String) The name of the variable."
-  type        = string
-  default     = null
-}
-
-variable "project_variable_value" {
-  description = "(String, Sensitive) The value of the variable."
-  type        = string
-  default     = null
-}
-
-variable "masked" {
-  description = "(Boolean) If set to true, the value of the variable will be hidden in job logs. The value must meet the masking requirements. Defaults to false."
-  type        = bool
-  default     = false
-}
-
-variable "protected" {
-  description = "(Boolean) If set to true, the variable will be passed only to pipelines running on protected branches and tags. Defaults to false."
-  type        = bool
-  default     = false
-}
-
-variable "url" {
-  description = "(String) The url of the hook to invoke."
-  type        = string
-  default     = null
-}
-
-variable "confidential_issues_events" {
-  description = "(Boolean) Invoke the hook for confidential issues events."
-  type        = bool
-  default     = false
-}
-
-variable "confidential_note_events" {
-  description = "(Boolean) Invoke the hook for confidential notes events."
-  type        = bool
-  default     = false
-}
-
-variable "deployment_events" {
-  description = "(Boolean) Invoke the hook for deployment events."
-  type        = bool
-  default     = false
-}
-
-variable "enable_ssl_verification" {
-  description = "(Boolean) Enable ssl verification when invoking the hook."
-  type        = bool
-  default     = false
-}
-
-variable "issues_events" {
-  description = "(Boolean) Invoke the hook for issues events."
-  type        = bool
-  default     = false
-}
-
-variable "job_events" {
-  description = "(Boolean) Invoke the hook for job events."
-  type        = bool
-  default     = false
-}
-
-variable "merge_requests_events" {
-  description = "(Boolean) Invoke the hook for merge requests."
-  type        = bool
-  default     = false
-}
-
-variable "pipeline_events" {
-  description = "(Boolean) Invoke the hook for pipeline events."
-  type        = bool
-  default     = false
-}
-
-variable "push_events" {
-  description = "(Boolean) Invoke the hook for push events."
-  type        = bool
-  default     = false
-}
-
-variable "push_events_branch_filter" {
-  description = "(String) Invoke the hook for push events on matching branches only."
-  type        = bool
-  default     = false
-}
-
-variable "releases_events" {
-  description = "(Boolean) Invoke the hook for releases events."
-  type        = bool
-  default     = false
-}
-
-variable "tag_push_events" {
-  description = "(Boolean) Invoke the hook for tag push events."
-  type        = bool
-  default     = false
-}
-
-variable "token" {
-  description = "(String, Sensitive) A token to present when invoking the hook. The token is not available for imported resources."
-  type        = bool
-  default     = false
-}
-
-variable "ref" {
-  description = "(String) The branch/tag name to be triggered."
-  type        = string
-  default     = "main"
-}
-
-variable "cron" {
-  description = "(String) The cron (e.g. 0 1 * * *)."
-  type        = string
-  default     = "0 1 * * *"
-}
-
-variable "active" {
-  description = "(Boolean) The activation of pipeline schedule. If false is set, the pipeline schedule will deactivated initially."
-  type        = bool
-  default     = false
-}
-
-variable "pipline_schedule_key" {
-  description = "(String) Name of the variable."
-  type        = string
-  default     = null
-}
-
-variable "pipline_schedule_value" {
-  description = "(String) Value of the variable."
-  type        = string
-  default     = null
-}
-
-variable "pipline_trigger_description" {
-  description = "(String) The description of the pipeline trigger."
-  type        = string
-  default     = ""
-}
-
-variable "branch_name" {
-  description = "(String) The name for this branch."
-  type        = string
-  default     = "develop"
-}
-
-variable "merge_access_level" {
-  description = "(String) Access levels allowed to merge. Valid values are: no one, developer, maintainer."
-  type        = string
-  default     = "maintainer"
-}
-
-variable "push_access_level" {
-  description = "(String) Access levels allowed to push. Valid values are: no one, developer, maintainer."
-  type        = string
-  default     = "maintainer"
-}
-
-variable "approval_rule" {
-  description = "Merge request approval rule configuration"
-  type = object({
-    enabled                           = bool
-    name                              = optional(string)
-    approvals_required                = optional(number)
-    applies_to_all_protected_branches = optional(bool)
-    user_ids                          = optional(list(number))
-    group_ids                         = optional(list(number))
-  })
-  default = {
-    enabled = false
-  }
-}
-
-variable "branch_protection" {
-  description = "Branch protection configuration"
-  type = object({
-    enabled                      = bool
-    branch                       = optional(string)
-    allow_force_push             = optional(bool)
-    push_access_level            = optional(string)
-    merge_access_level           = optional(string)
-    code_owner_approval_required = optional(bool)
-  })
-  default = {
-    enabled = false
-  }
+  description = "When false, no GitLab projects or child resources are created (projects_enabled is treated as false for project-related locals)."
 }
 
 variable "projects_enabled" {
-  type    = bool
-  default = true
+  type        = bool
+  default     = true
+  description = "When false, skips creating GitLab projects and project-scoped child resources (for example CI variables). Takes effect with var.create as create && projects_enabled in module locals; group namespaces may still be created when create is true."
+}
+
+variable "gitlab_group" {
+  type = object({
+    create                = optional(bool, false)
+    name                  = optional(string)
+    path                  = optional(string)
+    description           = optional(string, "")
+    visibility_level      = optional(string, "private")
+    parent_id             = optional(number)
+    existing_namespace_id = optional(number)
+  })
+  default = {
+    create = false
+  }
+  description = <<-EOT
+    Legacy single-group interface. Ignored when var.gitlab_groups is non-empty.
+    When create is true (and var.create is true), creates one GitLab group; its id is the default namespace
+    for gitlab_projects entries that omit namespace_id and group_key. Explicit namespace_id on a project always wins.
+  EOT
+
+  validation {
+    condition = (
+      !var.gitlab_group.create ||
+      (try(var.gitlab_group.name, null) != null && try(var.gitlab_group.path, null) != null)
+    )
+    error_message = "When gitlab_group.create is true, name and path are required."
+  }
+}
+
+variable "gitlab_groups" {
+  type = list(object({
+    key                   = string
+    create                = optional(bool, false)
+    name                  = optional(string)
+    path                  = optional(string)
+    description           = optional(string, "")
+    visibility_level      = optional(string, "private")
+    parent_id             = optional(number)
+    existing_namespace_id = optional(number)
+  }))
+  default     = []
+  description = <<-EOT
+    Multiple GitLab groups. When this list is non-empty, it replaces the legacy var.gitlab_group single-object
+    wiring (each entry needs a unique "key"). Set group_key on each gitlab_projects item to choose a group,
+    or set namespace_id. With more than one entry here, every project must set group_key or namespace_id.
+    For create = false, set existing_namespace_id to use a pre-existing group's id as that key's namespace.
+  EOT
+
+  validation {
+    condition     = length(var.gitlab_groups) == 0 || length(distinct([for g in var.gitlab_groups : g.key])) == length(var.gitlab_groups)
+    error_message = "gitlab_groups: each entry must have a unique \"key\"."
+  }
+
+  validation {
+    condition = alltrue([
+      for g in var.gitlab_groups :
+      !g.create || (try(g.name, null) != null && try(g.path, null) != null)
+    ])
+    error_message = "When gitlab_groups[].create is true, name and path are required."
+  }
 }
 
 # -----------------------------------------------------------------------------
-# Global settings applied to all projects (e.g. 30 repos with same CI and env)
+# Global settings applied to all projects (e.g. shared CI tokens)
 # -----------------------------------------------------------------------------
 
 variable "global_env_variables" {
-  description = "Environment variables applied to every GitLab project. Use for shared NPM_TOKEN, GITLAB_TOKEN, etc."
   type = list(object({
     key       = string
     value     = string
     masked    = optional(bool, false)
     protected = optional(bool, false)
   }))
-  default = []
-}
-
-variable "global_repository_files" {
-  description = "Repository files applied to every project. Use content_file to load from disk (e.g. .gitlab-ci.yml, .releaserc.json). Path is typically path.module from the caller."
-  type = list(object({
-    file_path      = string
-    content_file   = optional(string) # path to file, e.g. \"${path.module}/templates/.gitlab-ci.yml\"
-    content        = optional(string) # inline content; one of content_file or content required
-    branch         = optional(string, "main")
-    commit_message = optional(string, "Managed by Terraform")
-    author_name    = optional(string)
-    author_email   = optional(string)
-  }))
-  default = []
+  default     = []
+  description = "Environment variables applied to every GitLab project. Use for shared NPM_TOKEN, GITLAB_TOKEN, etc."
 }
 
 variable "gitlab_projects" {
-  description = "List of GitLab project configurations"
   type = list(object({
     name        = string
     description = optional(string)
@@ -277,21 +96,41 @@ variable "gitlab_projects" {
     initialize_with_readme = optional(bool, false)
     request_access_enabled = optional(bool, true)
     prevent_destroy        = optional(bool, true)
-    lfs_enabled            = optional(bool, false)
+    namespace_id           = optional(number)
+    group_key              = optional(string)
+    lfs_enabled            = optional(bool, true)
     packages_enabled       = optional(bool, false)
 
-    # Merge behavior
-    squash_option = optional(string, "default_on") # always | default_on | never
-    merge_method  = optional(string, "ff")         # merge | rebase_merge | ff
+    # Merge behavior — full UI mapping in this variable's description above
+    squash_option = optional(string, "default_off")
+    merge_method  = optional(string, "rebase_merge")
 
     only_allow_merge_if_pipeline_succeeds            = optional(bool, true)
-    only_allow_merge_if_all_discussions_are_resolved = optional(bool, true)
+    only_allow_merge_if_all_discussions_are_resolved = optional(bool, false)
     remove_source_branch_after_merge                 = optional(bool, true)
 
     pages_access_level = optional(string, "private")
 
     suggestion_commit_message = optional(string)
     merge_commit_template     = optional(string)
+
+    branch_protections = optional(list(object({
+      branch                       = string
+      merge_access_level           = optional(string)
+      push_access_level            = optional(string)
+      allow_force_push             = optional(bool)
+      code_owner_approval_required = optional(bool)
+      unprotect_access_level       = optional(string)
+    })), [])
+
+    approval_rule = optional(object({
+      enabled                           = bool
+      name                              = optional(string)
+      approvals_required                = optional(number)
+      applies_to_all_protected_branches = optional(bool)
+      user_ids                          = optional(list(number))
+      group_ids                         = optional(list(number))
+    }))
 
     # Push rules (all optional)
     push_rules = optional(list(object({
@@ -315,16 +154,33 @@ variable "gitlab_projects" {
       masked    = optional(bool, false)
       protected = optional(bool, false)
     })), [])
-
-    # Repository files to manage (e.g. .releaserc, .gitlab-ci.yml). Use content_file to load from disk.
-    repository_files = optional(list(object({
-      file_path      = string
-      content_file   = optional(string) # path to file from caller, e.g. path.module/templates/file
-      content        = optional(string) # inline content; one of content_file or content
-      branch         = optional(string, "main")
-      commit_message = optional(string, "Managed by Terraform")
-      author_name    = optional(string)
-      author_email   = optional(string)
-    })), [])
   }))
+  description = <<-EOT
+    List of GitLab project configurations. Use group_key to select a namespace from var.gitlab_groups (must match an entry's key).
+    With multiple gitlab_groups, set group_key or namespace_id on every project. Omitting group_key uses the first group in the list.
+
+    Merge behavior (per project; GitLab UI under Settings → Merge requests):
+
+    squash_option — Squash commits when merging:
+      - never        → Do not allow (squash disabled; checkbox hidden)
+      - default_off  → Allow (checkbox visible, off by default)
+      - default_on   → Encourage (checkbox visible, on by default)
+      - always       → Require (always squash; user cannot disable)
+
+    merge_method — Merge method:
+      - merge        → Create a merge commit
+      - rebase_merge → Merge commit with semi-linear history
+      - ff           → Fast-forward merge
+
+    branch_protections — Optional list per project: Settings → Repository → Protected branches.
+    Access is only via merge_access_level / push_access_level (maintainer, developer, admin, no one).
+    Granular "specific users/groups" rows from the GitLab UI are not supported by provider resource gitlab_branch_protection.
+
+    approval_rule — Optional per project: one gitlab_project_approval_rule when enabled = true (MR approvals).
+
+    prevent_destroy — Contract hint for operators and downstream tooling only; this module does not set Terraform lifecycle { prevent_destroy } from this field (dynamic lifecycle is not supported for count/for_each resources in the same way as static blocks).
+
+    env_variables — Per-project CI/CD variables (gitlab_project_variable via module ci_env_variables), merged with
+    var.global_env_variables; the same key on the project overrides the global value.
+  EOT
 }
