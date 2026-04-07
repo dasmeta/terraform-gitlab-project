@@ -34,7 +34,7 @@ module "gitlab" {
       name             = "First Group"
       path             = "example-team-a-tf"
       description      = "First group — one repo in this example"
-      parent_id        = 129092988
+      parent_id        = "" # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
       visibility_level = "private"
     },
     {
@@ -43,7 +43,7 @@ module "gitlab" {
       name             = "Second Group"
       path             = "example-team-b-tf"
       description      = "Second group — two repos in this example"
-      parent_id        = 129092988
+      parent_id        = "" # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
       visibility_level = "private"
     },
   ]
