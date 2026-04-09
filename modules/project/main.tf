@@ -17,6 +17,8 @@ resource "gitlab_project" "this" {
 
   only_allow_merge_if_pipeline_succeeds = each.value.only_allow_merge_if_pipeline_succeeds
 
+  ci_pipeline_variables_minimum_override_role = each.value.ci_pipeline_variables_minimum_override_role
+
   only_allow_merge_if_all_discussions_are_resolved = each.value.only_allow_merge_if_all_discussions_are_resolved
 
   remove_source_branch_after_merge = each.value.remove_source_branch_after_merge

@@ -2,7 +2,7 @@ module "gitlab_group" {
   source = "./modules/gitlab_group"
   for_each = {
     for g in local.gitlab_groups_effective : g.key => g
-    if var.create && g.create
+    if g.create
   }
 
   create           = true
@@ -26,6 +26,15 @@ module "ci_env_variables" {
   gitlab_projects      = local.gitlab_projects_for_children
   global_env_variables = var.global_env_variables
   project_ids          = module.project.project_ids
+}
+
+check "gitlab_groups_or_project_namespace" {
+  assert {
+    condition = length(var.gitlab_projects) == 0 || length(var.gitlab_groups) > 0 || alltrue([
+      for p in var.gitlab_projects : try(p.namespace_id, null) != null
+    ])
+    error_message = "When gitlab_groups is empty, set namespace_id on every gitlab_projects entry."
+  }
 }
 
 check "gitlab_projects_target_group_when_multi" {
