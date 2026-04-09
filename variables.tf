@@ -164,4 +164,19 @@ variable "gitlab_projects" {
     ])
     error_message = "gitlab_projects[].ci_pipeline_variables_minimum_override_role must be one of: no_one_allowed, developer, maintainer, owner."
   }
+
+  validation {
+    condition = length(var.gitlab_projects) == 0 || length(var.gitlab_groups) > 0 || alltrue([
+      for p in var.gitlab_projects : try(p.namespace_id, null) != null
+    ])
+    error_message = "When gitlab_groups is empty, set namespace_id on every gitlab_projects entry."
+  }
+
+  validation {
+    condition = length(var.gitlab_groups) <= 1 || alltrue([
+      for p in var.gitlab_projects :
+      try(p.namespace_id, null) != null || try(p.group_key, null) != null
+    ])
+    error_message = "With multiple gitlab_groups entries, each gitlab_projects item must set namespace_id or group_key."
+  }
 }

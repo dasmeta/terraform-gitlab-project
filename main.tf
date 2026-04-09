@@ -27,22 +27,3 @@ module "ci_env_variables" {
   global_env_variables = var.global_env_variables
   project_ids          = module.project.project_ids
 }
-
-check "gitlab_groups_or_project_namespace" {
-  assert {
-    condition = length(var.gitlab_projects) == 0 || length(var.gitlab_groups) > 0 || alltrue([
-      for p in var.gitlab_projects : try(p.namespace_id, null) != null
-    ])
-    error_message = "When gitlab_groups is empty, set namespace_id on every gitlab_projects entry."
-  }
-}
-
-check "gitlab_projects_target_group_when_multi" {
-  assert {
-    condition = length(local.gitlab_groups_effective) <= 1 || alltrue([
-      for p in var.gitlab_projects :
-      try(p.namespace_id, null) != null || try(p.group_key, null) != null
-    ])
-    error_message = "With multiple gitlab_groups entries, each gitlab_projects item must set namespace_id or group_key."
-  }
-}
