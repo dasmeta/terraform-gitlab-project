@@ -15,7 +15,7 @@ No providers.
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_example"></a> [example](#module\_example) | ../../ | n/a |
+| <a name="module_gitlab"></a> [gitlab](#module\_gitlab) | ../.. | n/a |
 
 ## Resources
 
@@ -27,5 +27,7 @@ No inputs.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+|------|-------------|
+| <a name="output_gitlab"></a> [gitlab](#output\_gitlab) | All outputs from the terraform-gitlab-project module (gitlab\_group\_ids, gitlab\_project\_ids, …). |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

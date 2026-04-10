@@ -1,12 +1,9 @@
-locals {
-  create = var.create
-}
-
 resource "gitlab_project" "this" {
   for_each = var.projects_enabled ? { for p in var.gitlab_projects : p.name => p } : {}
 
-  name        = each.value.name
-  description = try(each.value.description, null)
+  name         = each.value.name
+  description  = try(each.value.description, null)
+  namespace_id = try(each.value.namespace_id, null)
 
   visibility_level       = each.value.visibility_level
   default_branch         = each.value.default_branch
@@ -19,6 +16,8 @@ resource "gitlab_project" "this" {
   merge_method  = each.value.merge_method
 
   only_allow_merge_if_pipeline_succeeds = each.value.only_allow_merge_if_pipeline_succeeds
+
+  ci_pipeline_variables_minimum_override_role = each.value.ci_pipeline_variables_minimum_override_role
 
   only_allow_merge_if_all_discussions_are_resolved = each.value.only_allow_merge_if_all_discussions_are_resolved
 
@@ -45,5 +44,36 @@ resource "gitlab_project" "this" {
       reject_unsigned_commits       = push_rules.value.reject_unsigned_commits
     }
   }
+}
 
+resource "gitlab_branch_protection" "branch" {
+  for_each = var.projects_enabled ? {
+    for row in local.branch_protections_flat : row.key => row
+  } : {}
+
+  project = gitlab_project.this[each.value.project_name].id
+  branch  = each.value.branch
+
+  merge_access_level           = each.value.merge_access_level
+  push_access_level            = each.value.push_access_level
+  allow_force_push             = each.value.allow_force_push
+  code_owner_approval_required = each.value.code_owner_approval_required
+  unprotect_access_level       = each.value.unprotect_access_level
+}
+
+resource "gitlab_project_approval_rule" "this" {
+  for_each = var.projects_enabled ? {
+    for p in var.gitlab_projects : p.name => p
+    if try(p.approval_rule.enabled, false)
+  } : {}
+
+  project = gitlab_project.this[each.key].id
+
+  name               = coalesce(try(each.value.approval_rule.name, null), "Approval rule")
+  approvals_required = coalesce(try(each.value.approval_rule.approvals_required, null), 1)
+
+  applies_to_all_protected_branches = coalesce(try(each.value.approval_rule.applies_to_all_protected_branches, null), false)
+
+  user_ids  = try(each.value.approval_rule.user_ids, null)
+  group_ids = try(each.value.approval_rule.group_ids, null)
 }
