@@ -4,6 +4,10 @@
 .codex/
 specs/
 node_modules/
+.terraform/
+*.tfstate*
+*.tfvars
+.terraform.lock.hcl
 *.log
 .env*
 .DS_Store
