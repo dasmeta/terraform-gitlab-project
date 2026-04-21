@@ -3,7 +3,7 @@
 **Feature Branch**: `002-module-improvement-roadmap`  
 **Created**: 2026-04-10  
 **Status**: Draft  
-**Input**: User description: "create todo list/concept for improving this module. Consider (deduplicate) ideas coming from jira-epic-tasks.md file."
+**Input**: User description: "create todo list/concept for improving this module. Consider and deduplicate ideas from the DMVP-38 Jira epic child tickets."
 
 ## Module Scope and Impact *(mandatory)*
 
@@ -167,10 +167,10 @@ documentation, and repository structure are standardized by default.
 foundational improvement because later review-app, Kubernetes, and broader
 DevEx features depend on a predictable repository baseline.
 
-**Independent Test**: Review `jira-epic-tasks.md` against repo-root `TODO.md`
-and this specification and confirm the service-repository standardization items
-are consolidated into one primary roadmap track with explicit security,
-linting, documentation, and content-structure intent.
+**Independent Test**: Review the DMVP-38 child-ticket inventory against
+repo-root `TODO.md` and this specification and confirm the service-repository
+standardization items are consolidated into one primary roadmap track with
+explicit security, linting, documentation, and content-structure intent.
 
 **Acceptance Scenarios**:
 
@@ -254,9 +254,9 @@ items while client-specific and one-off operational work remain separate.
 
 ### Functional Requirements
 
-- **FR-001**: The roadmap MUST account for every line in
-  `jira-epic-tasks.md` exactly once through a theme assignment, duplicate
-  consolidation, or explicit out-of-scope classification.
+- **FR-001**: The roadmap MUST account for every reviewed DMVP-38 child-ticket
+  idea exactly once through a theme assignment, duplicate consolidation, or
+  explicit out-of-scope classification.
 - **FR-002**: The feature MUST produce repo-root `TODO.md` as the primary
   actionable backlog artifact for maintainers.
 - **FR-003**: The roadmap MUST preserve a focused scope around GitLab
@@ -303,8 +303,8 @@ items while client-specific and one-off operational work remain separate.
 
 ## Dependencies and Assumptions
 
-- The Jira epic task file is treated as an ideation source, not as a committed
-  implementation order.
+- The DMVP-38 child-ticket inventory is treated as an ideation source, not as a
+  committed implementation order.
 - This specification does not approve any breaking change, interface widening,
   or module split by itself; it only organizes the backlog and identifies where
   later approval is needed.
@@ -321,8 +321,8 @@ items while client-specific and one-off operational work remain separate.
 
 ### Measurable Outcomes
 
-- **SC-001**: 100% of items in `jira-epic-tasks.md` are represented in this
-  roadmap and in repo-root `TODO.md` without duplicate backlog entries.
+- **SC-001**: 100% of reviewed DMVP-38 child-ticket ideas are represented in
+  this roadmap and in repo-root `TODO.md` without duplicate backlog entries.
 - **SC-002**: Repo-root `TODO.md` exists and a maintainer can identify the
   three major improvement themes plus the explicit out-of-scope boundary from
   it in under 10 minutes.

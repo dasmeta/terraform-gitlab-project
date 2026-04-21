@@ -24,7 +24,7 @@ DevEx, while keeping client-specific and one-off operational work out of scope.
 **Testing Strategy**: Source-to-roadmap traceability review, `TODO.md` to spec consistency review, plan artifact consistency review, and command-based verification of generated planning files  
 **Target Platform**: GitLab API via Terraform provider  
 **Project Type**: Terraform module repository  
-**Constraints**: Preserve explicit GitLab-management boundaries, record justified scope expansion beyond project-only framing, avoid unapproved runtime interface widening, keep client-specific and one-off operational work out of scope, and maintain traceability back to `jira-epic-tasks.md`
+**Constraints**: Preserve explicit GitLab-management boundaries, record justified scope expansion beyond project-only framing, avoid unapproved runtime interface widening, keep client-specific and one-off operational work out of scope, and maintain traceability back to the reviewed DMVP-38 child-ticket inventory
 **Scale/Scope**: `TODO.md`, `spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/roadmap-classification.md`, `tasks.md`, and agent context updates if planning metadata changes
 
 ## Constitution Check

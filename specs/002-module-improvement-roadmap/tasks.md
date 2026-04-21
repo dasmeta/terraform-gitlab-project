@@ -29,7 +29,7 @@ be written and reviewed independently.
   `specs/002-module-improvement-roadmap/contracts/roadmap-classification.md`,
   `specs/002-module-improvement-roadmap/checklists/requirements.md`,
   `specs/002-module-improvement-roadmap/tasks.md`
-- **Source input**: `jira-epic-tasks.md`
+- **Source input**: DMVP-38 Jira epic child-ticket inventory
 - **Agent context**: `AGENTS.md`
 
 ## Phase 1: Scope and Verification Setup
@@ -68,22 +68,22 @@ repo-root backlog output.
 repository standards for security, linting, documentation, and content
 structure.
 
-**Independent Test**: Review `jira-epic-tasks.md`, `TODO.md`, and
+**Independent Test**: Review the DMVP-38 child-ticket inventory, `TODO.md`, and
 `specs/002-module-improvement-roadmap/spec.md` and confirm service-repository
 standardization is the first major track with explicit security, linting, docs,
 and content-structure intent.
 
 ### Verification for User Story 1
 
-- [x] T009 [P] [US1] Prepare the service-repository traceability notes in `TODO.md` from `jira-epic-tasks.md`
-- [x] T010 [US1] Review `jira-epic-tasks.md`, `TODO.md`, and `specs/002-module-improvement-roadmap/spec.md` for complete US1 source coverage
+- [x] T009 [P] [US1] Prepare the service-repository traceability notes in `TODO.md` from the DMVP-38 child-ticket inventory
+- [x] T010 [US1] Review the DMVP-38 child-ticket inventory, `TODO.md`, and `specs/002-module-improvement-roadmap/spec.md` for complete US1 source coverage
 
 ### Implementation for User Story 1
 
 - [x] T011 [P] [US1] Add the top-priority service-repository standardization section to `TODO.md`
 - [x] T012 [P] [US1] Align service-repository standardization wording and theme details in `specs/002-module-improvement-roadmap/spec.md`
 - [x] T013 [P] [US1] Align the service-repository usage guidance in `specs/002-module-improvement-roadmap/quickstart.md`
-- [x] T014 [US1] Re-run the US1 traceability and ordering review across `TODO.md`, `jira-epic-tasks.md`, and `specs/002-module-improvement-roadmap/spec.md`
+- [x] T014 [US1] Re-run the US1 traceability and ordering review across the DMVP-38 child-ticket inventory, `TODO.md`, and `specs/002-module-improvement-roadmap/spec.md`
 
 **Checkpoint**: `TODO.md` leads with a clear, deduplicated service-repository
 standardization track.
@@ -103,7 +103,7 @@ expectations.
 
 ### Verification for User Story 2
 
-- [x] T015 [P] [US2] Prepare the dynamic-environment and testing traceability notes in `TODO.md` from `jira-epic-tasks.md`
+- [x] T015 [P] [US2] Prepare the dynamic-environment and testing traceability notes in `TODO.md` from the DMVP-38 child-ticket inventory
 - [x] T016 [US2] Review `TODO.md`, `specs/002-module-improvement-roadmap/spec.md`, and `specs/002-module-improvement-roadmap/quickstart.md` for explicit review-app and end-to-end testing coverage
 
 ### Implementation for User Story 2
@@ -133,7 +133,7 @@ capabilities, and out-of-scope client-specific work are clearly separated.
 
 ### Verification for User Story 3
 
-- [x] T021 [P] [US3] Prepare the Kubernetes and GitLab DevEx traceability notes in `TODO.md` from `jira-epic-tasks.md`
+- [x] T021 [P] [US3] Prepare the Kubernetes and GitLab DevEx traceability notes in `TODO.md` from the DMVP-38 child-ticket inventory
 - [x] T022 [US3] Review `TODO.md`, `specs/002-module-improvement-roadmap/spec.md`, and `specs/002-module-improvement-roadmap/contracts/roadmap-classification.md` for explicit Kubernetes, runner, monitoring, and out-of-scope separation
 
 ### Implementation for User Story 3
