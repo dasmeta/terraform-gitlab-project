@@ -32,8 +32,8 @@
 ## Decision 3: Prioritize three explicit roadmap tracks
 
 - Decision: Order the backlog as service repository standardization first,
-  dynamic environments with end-to-end confidence second, and Kubernetes or
-  broader GitLab DevEx integration third.
+  dynamic environments with end-to-end confidence second, and broader GitLab
+  platform capability plus DevEx third.
 - Rationale: This sequencing matches the clarified user priorities and creates a
   dependency-aware path where developer experience improvements build on a
   standardized repository baseline.
@@ -43,20 +43,23 @@
   - Put Kubernetes first: rejected because the user framed repository
     standardization and review-app DevEx as stronger immediate priorities.
 
-## Decision 4: Keep operational work visible but separate
+## Decision 4: Move reusable GitLab platform capability in scope and keep only
+client-specific or one-off operational work out of scope
 
-- Decision: Maintain an adjacent operational track for runner lifecycle,
-  monitoring, connection issues, client-specific planning, and performance
-  operations unless a later feature narrows them to GitLab-managed repository
-  wiring.
-- Rationale: The broader roadmap still needs ownership boundaries. Keeping these
-  items visible but separate reduces scope drift while preserving source
-  traceability.
+- Decision: Treat runner lifecycle, monitoring, and reusable performance testing
+  via pipeline as in-scope GitLab platform capability, while keeping only
+  client-specific planning and one-off operational incident remediation out of
+  scope.
+- Rationale: The refined epic now includes runners, agents, monitoring, and
+  related GitLab delivery observability as core capability. The ownership
+  boundary is no longer "operational versus roadmap"; it is "reusable GitLab
+  delivery capability versus client-specific or ad hoc work."
 - Alternatives considered:
-  - Fold operational work into the third DevEx track: rejected because it
-    blurs ownership and delivery focus.
-  - Drop adjacent items from the roadmap entirely: rejected because source
-    traceability matters.
+  - Keep runners and monitoring separate from the roadmap: rejected because it
+    conflicts with the refined epic scope.
+  - Pull all operational items into scope: rejected because client-specific
+    planning and one-off incident remediation do not create reusable GitLab
+    capability.
 
 ## Decision 5: Record roadmap-level scope expansion as approved exception
 

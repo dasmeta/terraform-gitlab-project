@@ -39,3 +39,6 @@
 - Implementation pass: repo-root `TODO.md` is now the primary actionable backlog
   artifact and must stay aligned with the supporting roadmap spec and plan
   artifacts.
+- Post-refinement alignment pass: runners, monitoring, and reusable pipeline
+  performance testing are now treated as core GitLab platform scope; only
+  client-specific and one-off operational work remain out of scope.

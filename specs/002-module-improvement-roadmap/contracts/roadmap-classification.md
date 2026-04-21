@@ -12,9 +12,9 @@ ADR, or issue.
 - `todo_section`: The target section in `TODO.md`.
 - `theme`: One of the approved improvement themes from the roadmap spec.
 - `source_ideas`: The exact original Jira lines that informed the item.
-- `classification`: `prioritized`, `duplicate`, `adjacent`, or
+- `classification`: `prioritized`, `duplicate`, `out-of-scope`, or
   `approval-required`.
-- `phase`: `Phase 1`, `Phase 2`, `Phase 3`, or `Adjacent`.
+- `phase`: `Phase 1`, `Phase 2`, `Phase 3`, or `Out Of Scope`.
 - `consumer_impact`: What maintainers or downstream GitLab consumers would
   experience if the item is implemented.
 - `scope_boundary`: What the item explicitly does not cover.
@@ -33,8 +33,9 @@ ADR, or issue.
   GitLab-management tracks in `TODO.md`.
 - Use `duplicate` when the Jira idea is already represented by a broader roadmap
   item and should not create a separate implementation track.
-- Use `adjacent` when the work belongs to operational runner management,
-  monitoring, client-specific planning, or other non-primary roadmap work.
+- Use `out-of-scope` when the work is client-specific, one-off operational
+  remediation, or otherwise outside the reusable GitLab delivery capability
+  owned by this roadmap.
 - Use `approval-required` when the work may broaden the runtime module
   interface, justify repository renaming, or exceed the currently approved
   roadmap ownership.

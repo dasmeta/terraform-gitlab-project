@@ -9,9 +9,9 @@ Refresh the planning package so the primary actionable deliverable becomes
 repo-root `TODO.md`, backed by supporting design artifacts under
 `specs/002-module-improvement-roadmap/`. The roadmap now targets broader
 GitLab-related management, prioritizing service repository standardization,
-dynamic environments with end-to-end confidence, and Kubernetes or broader
-GitLab DevEx integration, while keeping operational runner and monitoring work
-separate.
+dynamic environments with end-to-end confidence, and broader GitLab platform
+capability including runners, monitoring, Kubernetes integration, and GitLab
+DevEx, while keeping client-specific and one-off operational work out of scope.
 
 ## Technical Context
 
@@ -24,7 +24,7 @@ separate.
 **Testing Strategy**: Source-to-roadmap traceability review, `TODO.md` to spec consistency review, plan artifact consistency review, and command-based verification of generated planning files  
 **Target Platform**: GitLab API via Terraform provider  
 **Project Type**: Terraform module repository  
-**Constraints**: Preserve explicit GitLab-management boundaries, record justified scope expansion beyond project-only framing, avoid unapproved runtime interface widening, keep adjacent operational work separate, and maintain traceability back to `jira-epic-tasks.md`  
+**Constraints**: Preserve explicit GitLab-management boundaries, record justified scope expansion beyond project-only framing, avoid unapproved runtime interface widening, keep client-specific and one-off operational work out of scope, and maintain traceability back to `jira-epic-tasks.md`
 **Scale/Scope**: `TODO.md`, `spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/roadmap-classification.md`, `tasks.md`, and agent context updates if planning metadata changes
 
 ## Constitution Check
@@ -36,8 +36,8 @@ separate.
 - Scope check: Pass with justified exception. The roadmap broadens from GitLab
   project lifecycle management toward broader GitLab-related management, but the
   user explicitly approved that direction during clarification on 2026-04-10.
-  This plan records the exception and still keeps operational runner and
-  monitoring work outside the main roadmap.
+  This plan records the exception and keeps the boundary focused on reusable
+  GitLab capability rather than client-specific or one-off operational work.
 - Wrapper check: Pass. No Terraform inputs or outputs change in this feature;
   the plan only broadens roadmap ownership and naming direction, not the live
   runtime interface.
@@ -66,15 +66,16 @@ separate.
   specs/002-module-improvement-roadmap/data-model.md`, `sed -n '1,260p'
   specs/002-module-improvement-roadmap/quickstart.md`, `sed -n '1,260p'
   specs/002-module-improvement-roadmap/contracts/roadmap-classification.md`,
-  `sed -n '1,360p' specs/002-module-improvement-roadmap/tasks.md`, and `rg -n
-  "service repository|dynamic environments|Kubernetes|adjacent operational"
+  `sed -n '1,420p' specs/002-module-improvement-roadmap/tasks.md`, and `rg -n
+  "service repository|dynamic environments|GitLab platform|client-specific"
   TODO.md specs/002-module-improvement-roadmap`.
 
 ### Post-Phase 1 Design Re-Check
 
 - Scope check: Pass with justified exception. The generated design artifacts now
   consistently frame the roadmap as broader GitLab-management planning with
-  three priority tracks and a separate adjacent operational track.
+  three priority tracks and an explicit out-of-scope boundary for client-
+  specific and one-off operational work.
 - Wrapper check: Pass. The artifacts still avoid live module interface changes.
 - Approval check: Pass. The roadmap-level expansion remains documented as
   clarification-approved; no new runtime widening was introduced during design.
@@ -133,10 +134,11 @@ or automation files in this feature.
   allowed at roadmap level because the user explicitly approved it, but runtime
   interface widening still requires later approval.
 - Resolve the top-priority tracks: service repository standardization first,
-  dynamic environments with end-to-end confidence second, Kubernetes and
-  broader GitLab DevEx third.
-- Resolve adjacent work handling: runner lifecycle, monitoring, client-specific
-  planning, and other operational items remain visible but separate.
+  dynamic environments with end-to-end confidence second, GitLab platform
+  capability and broader GitLab DevEx third.
+- Resolve scope handling: runner lifecycle, monitoring, and related GitLab
+  platform capability are core roadmap work, while client-specific planning and
+  one-off operational incident work stay out of scope.
 
 ## Phase 1: Design Outputs
 

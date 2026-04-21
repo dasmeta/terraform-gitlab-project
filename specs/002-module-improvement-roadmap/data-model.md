@@ -20,7 +20,7 @@
   stream.
 - Fields:
   - `name`: Stable theme label.
-  - `priority`: First, second, third, or adjacent.
+  - `priority`: First, second, third, or out-of-scope.
   - `intent`: Plain-language description of the goal.
   - `scope_boundary`: Statement of what belongs inside the theme and what does
     not.
@@ -42,7 +42,7 @@
   - `artifact_impact`: Required supporting updates when the item is eventually
     implemented.
   - `approval_needed`: Whether later explicit approval is required.
-  - `status`: Prioritized, adjacent, or approval-required.
+  - `status`: Prioritized, out-of-scope, or approval-required.
 - Relationships:
   - Belongs to one `ImprovementTheme`.
   - May require one `ScopeDecision`.
@@ -52,7 +52,7 @@
 
 - Purpose: Record the ownership decision for a Jira idea or roadmap item.
 - Fields:
-  - `classification`: In-scope, duplicate, adjacent, or approval-required.
+  - `classification`: In-scope, duplicate, out-of-scope, or approval-required.
   - `reason`: Why the classification was chosen.
   - `follow_up_owner`: Module maintainers, platform team, or future discovery.
   - `approval_reference`: Link or note when clarification-approved expansion is

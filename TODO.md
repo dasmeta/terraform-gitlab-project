@@ -66,18 +66,22 @@ Source coverage:
 - `Improve service lunching process`
 - `Prevent old version overwriting new version if deployed manually`
 
-## Priority 3: Expand Kubernetes and GitLab DevEx Integration
+## Priority 3: Expand GitLab Platform Capability and DevEx
 
 Goal: use as much of the GitLab developer platform as possible where it
 strengthens standardized service repositories and dynamic environments.
 
-- Define GitLab Kubernetes integration support.
-- Define repository-driven Kubernetes configuration patterns where they fit the
-  GitLab-management scope.
-- Evaluate GitLab Workspaces as part of developer experience.
-- Evaluate GitLab Duo and similar GitLab-native DevEx capabilities.
-- Support project-level runner enablement controls when they improve repository
-  developer experience directly.
+- Define GitLab Kubernetes integration support and repository-driven Kubernetes
+  configuration patterns where they fit the GitLab delivery scope.
+- Support GitLab runner and agent capability needed for the delivery model,
+  including lifecycle management, boot-time optimization, and project-level
+  runner enablement controls where useful.
+- Implement runner and pipeline monitoring or dashboards as part of the GitLab
+  delivery platform.
+- Evaluate GitLab Workspaces, GitLab Duo, and similar GitLab-native DevEx
+  capabilities where they improve repository usability and delivery quality.
+- Define performance testing via pipelines where that work becomes part of the
+  reusable GitLab delivery model.
 
 Source coverage:
 
@@ -86,31 +90,26 @@ Source coverage:
 - `Research Gitlab Duo`
 - `GitLab Workspaces`
 - `Enable/Disable Runners for Projects`
-
-## Adjacent Operational Work
-
-These items remain visible but are not part of the top three roadmap tracks
-unless a later feature narrows them to GitLab-managed repository or service
-wiring.
-
-- Runner lifecycle module creation and updates.
-- Runner boot-time optimization.
-- Runner and pipeline monitoring or dashboards.
-- GitLab connection issue remediation.
-- Client-specific planning.
-- Service performance testing strategy outside the core GitLab-management
-  backlog.
-
-Source coverage:
-
 - `Create terraform module to setup gitlab runners`
 - `Update GitLab runners`
 - `Research reducing boot time for gitlab runners`
 - `Develop dashboard to monitor gitlab self-hosted runners`
 - `Setup monitoring gitlab/github pipelines (CI/CD)`
+- `Come up with ways to performance test each service via pipeline`
+
+## Explicitly Out Of Scope
+
+These items may still exist in Jira for visibility, but they are not part of
+this implementation epic because they are client-specific or one-off
+operational work rather than reusable GitLab delivery capability.
+
+- Client-specific planning.
+- One-off GitLab connection issue remediation.
+
+Source coverage:
+
 - `Fix gitlab connection issue`
 - `Plan for each client`
-- `Come up with ways to performance test each service via pipeline`
 
 ## Approval Notes
 

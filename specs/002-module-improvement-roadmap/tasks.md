@@ -120,30 +120,31 @@ the second major improvement track.
 
 ## Phase 5: User Story 3 - Expand Kubernetes and GitLab DevEx Features (Priority: P3)
 
-**Goal**: Make repo-root `TODO.md` explicitly call out Kubernetes integration
-and broader GitLab DevEx capabilities as the third major track while keeping
-operational work separate.
+**Goal**: Make repo-root `TODO.md` explicitly call out Kubernetes integration,
+runners, monitoring, and broader GitLab DevEx capabilities as the third major
+track while keeping only client-specific and one-off operational work out of
+scope.
 
 **Independent Test**: Review `TODO.md`,
 `specs/002-module-improvement-roadmap/spec.md`, and
 `specs/002-module-improvement-roadmap/contracts/roadmap-classification.md` and
-confirm Kubernetes, GitLab Workspaces, Duo-style capabilities, and adjacent
-operational work are clearly separated.
+confirm Kubernetes, runners, monitoring, GitLab Workspaces, Duo-style
+capabilities, and out-of-scope client-specific work are clearly separated.
 
 ### Verification for User Story 3
 
 - [x] T021 [P] [US3] Prepare the Kubernetes and GitLab DevEx traceability notes in `TODO.md` from `jira-epic-tasks.md`
-- [x] T022 [US3] Review `TODO.md`, `specs/002-module-improvement-roadmap/spec.md`, and `specs/002-module-improvement-roadmap/contracts/roadmap-classification.md` for explicit Kubernetes and adjacent-work separation
+- [x] T022 [US3] Review `TODO.md`, `specs/002-module-improvement-roadmap/spec.md`, and `specs/002-module-improvement-roadmap/contracts/roadmap-classification.md` for explicit Kubernetes, runner, monitoring, and out-of-scope separation
 
 ### Implementation for User Story 3
 
-- [x] T023 [P] [US3] Add the third-priority Kubernetes and GitLab DevEx section plus adjacent operational section to `TODO.md`
-- [x] T024 [P] [US3] Align the Kubernetes and broader GitLab DevEx theme details in `specs/002-module-improvement-roadmap/spec.md`
+- [x] T023 [P] [US3] Add the third-priority GitLab platform capability section plus explicit out-of-scope section to `TODO.md`
+- [x] T024 [P] [US3] Align the GitLab platform capability and broader GitLab DevEx theme details in `specs/002-module-improvement-roadmap/spec.md`
 - [x] T025 [P] [US3] Align the broader GitLab-management classification rules in `specs/002-module-improvement-roadmap/contracts/roadmap-classification.md`
 - [x] T026 [US3] Re-run the US3 ordering and scope-separation review across `TODO.md`, `specs/002-module-improvement-roadmap/spec.md`, and `specs/002-module-improvement-roadmap/contracts/roadmap-classification.md`
 
 **Checkpoint**: `TODO.md` explicitly shows the third improvement track and the
-adjacent operational backlog without mixing the two.
+explicit out-of-scope backlog boundary without mixing the two.
 
 ---
 
@@ -205,8 +206,8 @@ service-repository track and aligned supporting docs.
 1. Finish US1 to lock the standardized service-repository baseline.
 2. Finish US2 to add dynamic environments and e2e DevEx as the second major
    track.
-3. Finish US3 to add Kubernetes and broader GitLab DevEx while preserving the
-   adjacent operational track.
+3. Finish US3 to add GitLab platform capability, including runners and
+   monitoring, while preserving the explicit out-of-scope boundary.
 
 ### Validation Rule
 
@@ -220,7 +221,16 @@ have been re-run and `TODO.md` remains consistent with `spec.md`, `plan.md`,
 ## Notes
 
 - `TODO.md` is the primary actionable deliverable for this feature
-- Keep the adjacent operational work visible but separate from the top three
-  improvement tracks
+- Keep client-specific and one-off operational work explicit but out of scope
+  from the top three improvement tracks
 - Stop for approval before using the roadmap to justify actual interface
   widening or repository renaming
+
+## Post-Refinement Alignment Update
+
+- [x] T031 Update `TODO.md` to move runners, monitoring, and reusable pipeline performance testing into the core GitLab platform roadmap and move client-specific work into an explicit out-of-scope section
+- [x] T032 Update `specs/002-module-improvement-roadmap/spec.md` so the refined scope matches the Jira epic: runners and monitoring in scope, client-specific work out of scope
+- [x] T033 Update `specs/002-module-improvement-roadmap/plan.md`, `research.md`, and `data-model.md` to replace adjacent-work assumptions with the refined in-scope/out-of-scope boundary
+- [x] T034 Update `specs/002-module-improvement-roadmap/quickstart.md` and `specs/002-module-improvement-roadmap/contracts/roadmap-classification.md` to reflect the new review and classification rules
+- [x] T035 Update `specs/002-module-improvement-roadmap/checklists/requirements.md` notes so the checklist history reflects the post-refinement alignment pass
+- [x] T036 Re-run consistency verification across `TODO.md` and `specs/002-module-improvement-roadmap/` for GitLab platform capability, runner/monitoring scope, and explicit client-specific exclusion
