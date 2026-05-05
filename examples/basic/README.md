@@ -6,6 +6,8 @@ This example demonstrates the supported multi-group workflow:
 - each group is in managed-group mode with `create = true`
 - project-level `env_variables` can replace a shared variable definition by
   reusing the same key
+- field-level defaults and behavioral notes are documented inline in the root
+  `variables.tf` schema rather than in a detached shared prose block
 
 Use this example when you want multiple repositories spread across multiple
 GitLab groups. If you have exactly one group, the root module also supports the

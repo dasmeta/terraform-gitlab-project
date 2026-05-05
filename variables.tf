@@ -64,50 +64,49 @@ variable "global_env_variables" {
 
 variable "gitlab_projects" {
   type = list(object({
-    name                                             = string
-    description                                      = optional(string)
-    visibility_level                                 = optional(string, "private")
-    default_branch                                   = optional(string, "develop")
-    initialize_with_readme                           = optional(bool, true)
-    request_access_enabled                           = optional(bool, true)
-    prevent_destroy                                  = optional(bool, true)
-    namespace_id                                     = optional(number)
-    group_key                                        = optional(string)
-    lfs_enabled                                      = optional(bool, true)
-    packages_enabled                                 = optional(bool, true)
-    squash_option                                    = optional(string, "default_on")
-    merge_method                                     = optional(string, "merge")
-    only_allow_merge_if_pipeline_succeeds            = optional(bool, true)
-    only_allow_merge_if_all_discussions_are_resolved = optional(bool, true)
-    remove_source_branch_after_merge                 = optional(bool, true)
-    ci_pipeline_variables_minimum_override_role      = optional(string, "developer")
-    pages_access_level                               = optional(string, "private")
-    suggestion_commit_message                        = optional(string)
-    merge_commit_template                            = optional(string)
+    name                                             = string                         # Project name / slug key used by child resources
+    description                                      = optional(string)               # Project description
+    visibility_level                                 = optional(string, "private")    # private | internal | public
+    default_branch                                   = optional(string, "develop")    # Initial default branch name
+    initialize_with_readme                           = optional(bool, true)           # Create repository with README
+    request_access_enabled                           = optional(bool, true)           # Allow users to request access
+    prevent_destroy                                  = optional(bool, true)           # Contract hint only; not mapped to Terraform lifecycle
+    namespace_id                                     = optional(number)               # Explicit GitLab namespace id for the project
+    group_key                                        = optional(string)               # Resolve namespace through gitlab_groups[].key
+    lfs_enabled                                      = optional(bool, true)           # Enable Git LFS for the project
+    packages_enabled                                 = optional(bool, true)           # Enable GitLab package registry
+    squash_option                                    = optional(string, "default_on") # never | default_off | default_on | always
+    merge_method                                     = optional(string, "merge")      # merge | rebase_merge | ff
+    only_allow_merge_if_pipeline_succeeds            = optional(bool, true)           # Require successful pipeline before merge
+    only_allow_merge_if_all_discussions_are_resolved = optional(bool, true)           # Require resolved discussions before merge
+    remove_source_branch_after_merge                 = optional(bool, true)           # Auto-delete source branch after merge
+    ci_pipeline_variables_minimum_override_role      = optional(string, "developer")  # no_one_allowed | developer | maintainer | owner
+    pages_access_level                               = optional(string, "private")    # GitLab Pages visibility level
+    suggestion_commit_message                        = optional(string)               # Suggested squash commit message template
+    merge_commit_template                            = optional(string)               # Merge commit message template
     branch_protections = optional(list(object({
-      branch                       = string
-      merge_access_level           = optional(string, "maintainer")
-      push_access_level            = optional(string, "maintainer")
-      allow_force_push             = optional(bool, false)
-      code_owner_approval_required = optional(bool, false)
-      unprotect_access_level       = optional(string, "maintainer")
+      branch                       = string                         # Protected branch name
+      merge_access_level           = optional(string, "maintainer") # Merge access role
+      push_access_level            = optional(string, "maintainer") # Push access role
+      allow_force_push             = optional(bool, false)          # Allow force-push on the branch
+      code_owner_approval_required = optional(bool, false)          # Require code-owner approval
+      unprotect_access_level       = optional(string, "maintainer") # Unprotect access role
     })), [])
     approval_rule = optional(list(object({
-      name                              = optional(string, "Approval rule")
-      approvals_required                = optional(number, 1)
-      applies_to_all_protected_branches = optional(bool, false)
-      user_ids                          = optional(list(number))
-      group_ids                         = optional(list(number))
+      name                              = optional(string, "Approval rule") # Approval rule display name
+      approvals_required                = optional(number, 1)               # Number of approvals required
+      applies_to_all_protected_branches = optional(bool, false)             # Apply rule to all protected branches
+      user_ids                          = optional(list(number))            # Explicit approver user ids
+      group_ids                         = optional(list(number))            # Explicit approver group ids
     })), [])
-    push_rules = optional(list(any), [])
+    push_rules = optional(list(any), []) # Provider-shaped push rules consumed by gitlab_project.push_rules
     env_variables = optional(list(object({
-      key       = string
-      value     = string
-      masked    = optional(bool, false)
-      protected = optional(bool, false)
+      key       = string                # CI/CD variable name
+      value     = string                # CI/CD variable value
+      masked    = optional(bool, false) # Hide value in logs / UI where supported
+      protected = optional(bool, false) # Restrict variable to protected refs
     })), [])
   }))
-  # Long-form description for terraform-docs / consumers
   description = <<-EOT
     List of GitLab project configurations.
 

@@ -20,7 +20,8 @@ documentation with real module behavior.
    - global versus project-level variable precedence
    - default project setting ownership in variable definitions rather than
      `locals.tf`
-   - validation and descriptions for the supported workflows
+   - validation and descriptions for the supported workflows, with variable
+     descriptions placed next to the variable blocks they describe
 4. Update consumer-facing artifacts in the same change set:
    - [README.md](/Users/vazgen/work/Dasmeta/modules/terraform-gitlab-project/README.md)
    - [examples/basic/main.tf](/Users/vazgen/work/Dasmeta/modules/terraform-gitlab-project/examples/basic/main.tf)
@@ -45,8 +46,8 @@ Add targeted validation fixtures for:
 - one invalid existing-group reference flow
 
 Then perform a docs-to-interface review to confirm the README, examples, and
-fixture expectations describe the same effective inputs, defaults, and
-precedence rules implemented by the module.
+fixture expectations describe the same effective inputs, defaults, precedence
+rules, and per-variable descriptions implemented by the module.
 
 ## Success Check
 
@@ -55,4 +56,5 @@ The feature is ready for implementation completion when:
 - supported configuration paths are explicit
 - ambiguous or unsupported input combinations are documented or rejected
 - example usage reflects the real module behavior
+- variable descriptions are co-located with their owning variable declarations
 - verification evidence is captured in the final report

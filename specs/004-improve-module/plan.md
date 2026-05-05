@@ -5,64 +5,43 @@
 
 ## Summary
 
-Improve the existing Terraform GitLab module without widening scope by making
-the supported project, group, and CI/CD variable workflows easier to
-understand and validate, while moving default project setting declarations out
-of `locals.tf` and into explicit variable definitions. The planned
-implementation surface covers the root module interface, child-module behavior
-that determines effective project and variable resolution, and all
-consumer-facing documentation and examples that describe those workflows.
-Verification will rely on `pre-commit`, Terraform validation, small example
-fixtures, and documentation consistency checks recorded in the implementation.
+Improve the existing Terraform GitLab wrapper module without widening scope.
+The change set keeps the consumer contract bounded to the current root module,
+clarifies supported group and namespace resolution paths, moves default project
+setting ownership out of `locals.tf` into variable definitions, and requires
+variable descriptions to live next to each individual variable instead of in a
+separate shared description block. Verification remains non-live and centered
+on `pre-commit`, `terraform validate`, example validation, and docs-to-code
+consistency review.
 
 ## Technical Context
 
-**Terraform Runtime**: `>= 1.3`  
+**Terraform Runtime**: Repository-managed Terraform CLI; no `required_version` declared in `version.tf`  
 **Primary Provider Constraints**: `gitlabhq/gitlab >= 18.8.2`  
-**Module Scope**: Root module, `modules/project`, `modules/gitlab_group`,
-`modules/ci_env_variables`, `README.md`, `examples/basic/`, validation
-fixtures under `examples/`, and agent/spec artifacts for this feature  
-**Testing Strategy**: `pre-commit run --all-files`, `terraform validate`,
-example validation with non-live initialization, and
-documentation-to-interface review for changed workflows; if new invalid
-fixtures are added during implementation, validate them as negative-proof
-cases rather than adding live provider-backed tests  
+**Module Scope**: Root module, child wrapper modules, README, examples, validation fixtures, planning artifacts, and agent context  
+**Testing Strategy**: `pre-commit run --all-files`, root `terraform validate`, `terraform -chdir=examples/basic validate`, targeted valid and invalid example fixtures, and rendered interface/documentation review  
 **Target Platform**: GitLab API via Terraform provider  
 **Project Type**: Terraform module repository  
-**Constraints**: Preserve opinionated wrapper scope, avoid unapproved
-interface widening, avoid unapproved breaking changes, keep docs/examples in
-sync with real behavior, keep validation closest to the module surface that
-owns the rule, and expose default project settings through variable
-definitions rather than embedded `locals.tf` defaults  
-**Scale/Scope**: Root input/output descriptions, variable defaults, validation
-rules, locals-driven resolution rules, child-module expectations, example
-fixtures, README guidance, and any verification or automation files required
-to prove the updated behaviors
+**Constraints**: Preserve opinionated wrapper interface; no unapproved interface widening; no unapproved breaking changes; keep defaults owned by variable definitions; keep variable descriptions adjacent to each variable block  
+**Scale/Scope**: `variables.tf`, `locals.tf`, `main.tf`, `outputs.tf`, `README.md`, `examples/basic/`, validation fixture examples, `modules/project/`, `modules/gitlab_group/`, `modules/ci_env_variables/`, `specs/004-improve-module/`, and `AGENTS.md`
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: Passes before Phase 0 research. Re-checked after Phase 1 design.*
 
-- Scope check: Pass. The feature is limited to clarifying and validating the
-  existing GitLab project, group, and CI/CD variable wrapper behavior.
-- Wrapper check: Pass. The design narrows ambiguity in namespace resolution,
-  group selection, variable precedence, and default-setting ownership without
-  exposing additional provider surface area.
-- Approval check: Pass. No breaking change or interface widening is planned in
-  this design phase.
-- File coverage check: Expected implementation touch points include
-  `variables.tf`, `locals.tf`, `main.tf`, `outputs.tf`, `README.md`,
-  `examples/basic/main.tf`, `examples/basic/README.md`,
-  `modules/project/{variables.tf,main.tf}`, `modules/gitlab_group/variables.tf`,
-  `modules/ci_env_variables/{variables.tf,main.tf}`, and any verification
-  automation required by the final solution.
-- Provider/version check: No provider version change is planned. Runtime and
-  provider constraints must still be re-checked if any provider-dependent
-  behavior or validation semantics change during implementation.
-- Verification check: Planned evidence includes `pre-commit run --all-files`,
-  `terraform validate` at the repository root, non-live validation of the
-  example configuration and targeted fixtures, and a README or docs review
-  against the implemented interface and defaults.
+- Scope check: Pass. The feature stays inside the existing GitLab project,
+  group, and CI/CD variable wrapper responsibility.
+- Wrapper check: Pass. The plan narrows and clarifies the supported consumer
+  surface instead of exposing more upstream provider fields.
+- Approval check: Pass. The spec records `Breaking Change: No` and `Interface
+  Widening: No`; no approval gate is triggered.
+- File coverage check: Pass. Planned file coverage includes root Terraform
+  files, child modules, README, examples, validation fixtures, planning docs,
+  and agent context updates.
+- Provider/version check: Pass. Provider-dependent behavior is reviewed, but
+  this feature does not require changes to provider constraints or `version.tf`.
+- Verification check: Pass. The plan names the required validation commands
+  and documentation review steps before completion can be claimed.
 
 ## Project Structure
 
@@ -75,7 +54,6 @@ specs/004-improve-module/
 ├── data-model.md
 ├── quickstart.md
 ├── contracts/
-│   └── README.md
 └── tasks.md
 ```
 
@@ -83,11 +61,10 @@ specs/004-improve-module/
 
 ```text
 .
-├── main.tf
-├── locals.tf
 ├── variables.tf
+├── locals.tf
+├── main.tf
 ├── outputs.tf
-├── versions.tf
 ├── README.md
 ├── examples/
 │   ├── basic/
@@ -98,41 +75,61 @@ specs/004-improve-module/
 │   ├── project/
 │   ├── gitlab_group/
 │   └── ci_env_variables/
-└── specs/
+└── AGENTS.md
 ```
 
-**Structure Decision**: The feature keeps the current repository layout and
-focuses implementation on the root wrapper interface, the child modules that
-resolve namespace and variable behavior, and the documentation/examples that
-serve as the effective consumer contract. Default project setting ownership
-will move from root `locals.tf` into explicit variable definitions and
-descriptions. No standalone external contract file is added for this feature;
-the `contracts/README.md` note records that choice. Design artifacts for this
-plan live under `specs/004-improve-module/`.
+**Structure Decision**:
+- Root interface and validation changes live in
+  `/Users/vazgen/work/Dasmeta/modules/terraform-gitlab-project/variables.tf`,
+  `/Users/vazgen/work/Dasmeta/modules/terraform-gitlab-project/locals.tf`,
+  `/Users/vazgen/work/Dasmeta/modules/terraform-gitlab-project/main.tf`, and
+  `/Users/vazgen/work/Dasmeta/modules/terraform-gitlab-project/outputs.tf`.
+- Consumer-facing contract updates live in
+  `/Users/vazgen/work/Dasmeta/modules/terraform-gitlab-project/README.md` and
+  `/Users/vazgen/work/Dasmeta/modules/terraform-gitlab-project/examples/`.
+- Child-module expectation and precedence alignment lives under
+  `/Users/vazgen/work/Dasmeta/modules/terraform-gitlab-project/modules/`.
+- Planning and verification artifacts remain under
+  `/Users/vazgen/work/Dasmeta/modules/terraform-gitlab-project/specs/004-improve-module/`.
+
+## Phase 0: Research Outcomes
+
+- Root consumer contract remains documentation-driven; no standalone machine
+  contract file is added.
+- Supported namespace resolution paths are limited to direct `namespace_id`,
+  explicit `group_key`, or the single-group fallback.
+- `gitlab_groups` behavior is treated as two explicit modes: managed create or
+  existing-group reference.
+- Default project settings are owned by variable definitions, not `locals.tf`.
+- Variable descriptions are part of each variable block and must not be kept in
+  one detached shared prose block.
+
+## Phase 1: Design Outputs
+
+- `research.md` captures decisions about wrapper scope, validation strategy,
+  contract boundary, default ownership, and per-variable description placement.
+- `data-model.md` records clarified project, group, and variable-definition
+  entities plus the rule that field-level descriptions stay co-located with the
+  variable they document.
+- `contracts/README.md` confirms there is no separate contract artifact beyond
+  the spec, research, README, and example files.
+- `quickstart.md` defines the implementation path and verification sequence for
+  the bounded wrapper-quality change.
 
 ## Post-Design Constitution Check
 
-- Scope check: Pass. Research kept the feature within the existing root module
-  contract for projects, groups, and CI/CD variables only.
-- Wrapper check: Pass. The design explicitly favors stricter validation of
-  ambiguous combinations and explicit variable-owned defaults over hidden local
-  normalization.
-- Approval check: Pass. Research retained the single-group fallback for
-  compatibility and did not introduce an unapproved breaking change or
-  interface widening in the plan itself.
-- File coverage check: Pass. The plan ties root module files, affected child
-  modules, `README.md`, `examples/basic/`, validation fixtures, and
-  verification artifacts together in one implementation slice.
-- Provider/version check: Pass. No version bump is needed for planning, but
-  provider-backed semantics must be checked if implementation changes runtime
-  validation behavior.
-- Verification check: Pass. The design names `pre-commit`, root/example
-  validation, targeted invalid fixtures, and docs review as required evidence.
+- Scope check: Still passes; design remains inside existing module ownership.
+- Wrapper check: Still passes; explicit typing, validation, defaults, and
+  inline descriptions strengthen the wrapper contract.
+- Approval check: Still passes; no breaking change or interface widening was
+  introduced during design.
+- File coverage check: Still passes; per-variable description placement expands
+  documentation work inside already-affected variable files.
+- Provider/version check: Still passes; no provider or version contract change
+  is required.
+- Verification check: Still passes; current plan still relies on validation and
+  docs review rather than live provider execution.
 
 ## Complexity Tracking
 
-> **Fill only if the Constitution Check reveals a justified exception**
-
-| Exception | Why Needed | Approval or Simpler Alternative Rejected Because |
-|-----------|------------|--------------------------------------------------|
-| None | Not applicable | Design stays within the existing wrapper scope |
+No constitution exceptions are required for this feature.

@@ -32,6 +32,7 @@
 ### Session 2026-05-05
 
 - Q: Where should default project setting values be declared? → A: Remove default values from `locals.tf` and declare them in variable definitions.
+- Q: How should variable descriptions be organized? → A: Place descriptions next to each variable instead of keeping them in a separate shared block.
 
 ## Assumptions
 
@@ -154,6 +155,8 @@ changes, and identifies a verification path for existing consumer workflows.
   module so consumers can distinguish unsupported use cases from regressions.
 - **FR-008**: Default project setting values MUST be declared through variable
   definitions instead of remaining embedded in `locals.tf`.
+- **FR-009**: Variable descriptions MUST be declared alongside each individual
+  variable so the documented contract stays local to the field it describes.
 
 ### Key Entities *(include if feature involves data or object schemas)*
 

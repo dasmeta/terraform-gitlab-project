@@ -160,3 +160,20 @@ wrapper interface.
 rejected because it hides contract behavior in implementation details.
 Duplicating defaults in both variables and locals was rejected because it would
 create drift risk and unclear ownership.
+
+## Variable Description Placement
+
+**Decision**: Keep variable descriptions adjacent to each individual variable
+block instead of relying on one separate shared description section for many
+fields.
+
+**Rationale**: The spec now treats field-local descriptions as part of the
+consumer contract. Co-locating descriptions with each variable keeps intent,
+default behavior, and validation context discoverable at the exact point where
+consumers read or maintain the input schema.
+
+**Alternatives considered**: A single central prose block for many variable
+fields was rejected because it creates lookup friction and drift risk. Splitting
+descriptions between inline variable blocks and detached narrative summaries was
+rejected because it makes ownership unclear and can leave conflicting wording in
+multiple places.

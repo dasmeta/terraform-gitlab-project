@@ -45,6 +45,10 @@ consistent.
   - Must provide either `namespace_id` or `group_key` when multiple groups are
     supplied
   - Must use an allowed override role value
+- **Documentation rules**:
+  - Any consumer-facing description for a project field must be declared next
+    to the variable field or variable block that owns it, not in a detached
+    shared description block
 - **Resolution rules**:
   - `namespace_id` wins when explicitly set
   - Otherwise, when groups exist, the module resolves the project namespace
@@ -72,6 +76,9 @@ consistent.
 - **Validation rules**:
   - Every group `key` must be unique
   - `name` and `path` are required when `create = true`
+- **Documentation rules**:
+  - Group field descriptions must remain co-located with the corresponding
+    variable declarations that define the supported contract
 - **Resolution rules**:
   - When `create = false`, `existing_group_id` may seed namespace resolution
   - When `create = true`, the created module output provides the namespace id
@@ -94,6 +101,10 @@ consistent.
 - **Validation rules**:
   - Definitions must remain keyed by unique variable name within the effective
     merged set per project
+- **Documentation rules**:
+  - The description for each variable definition field must stay adjacent to
+    the field-owning variable declaration so precedence and defaults remain
+    legible where the contract is defined
 - **Resolution rules**:
   - Global variables are loaded first
   - Project-level variables with the same key override the global definition
@@ -125,3 +136,5 @@ consistent.
   rules for namespace selection and variable precedence.
 - Default project settings must have one authoritative declaration path in
   variable definitions instead of split ownership across variables and locals.
+- Variable descriptions must have one authoritative declaration path adjacent to
+  the variable they document instead of detached shared prose.

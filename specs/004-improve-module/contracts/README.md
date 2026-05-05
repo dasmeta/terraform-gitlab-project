@@ -12,3 +12,7 @@ The effective consumer contract for `004-improve-module` is documented in:
 That choice is intentional because this feature clarifies an existing
 documentation-based Terraform module interface rather than introducing a new
 API, CLI, or machine-readable schema.
+
+The clarified contract also requires variable descriptions to remain adjacent
+to the variable declarations they document, so description placement is part of
+the existing Terraform-interface contract rather than a separate contract file.
