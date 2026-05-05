@@ -1,5 +1,8 @@
 resource "gitlab_project" "this" {
-  for_each = var.projects_enabled ? { for p in var.gitlab_projects : p.name => p } : {}
+  for_each = {
+    for p in var.gitlab_projects : p.name => p
+    if var.projects_enabled
+  }
 
   name         = each.value.name
   description  = try(each.value.description, null)
@@ -29,7 +32,7 @@ resource "gitlab_project" "this" {
   merge_commit_template     = try(each.value.merge_commit_template, null)
 
   dynamic "push_rules" {
-    for_each = each.value.push_rules
+    for_each = try(each.value.push_rules, [])
     content {
       author_email_regex            = try(push_rules.value.author_email_regex, null)
       branch_name_regex             = try(push_rules.value.branch_name_regex, null)
@@ -47,9 +50,10 @@ resource "gitlab_project" "this" {
 }
 
 resource "gitlab_branch_protection" "branch" {
-  for_each = var.projects_enabled ? {
+  for_each = {
     for row in local.branch_protections_flat : row.key => row
-  } : {}
+    if var.projects_enabled
+  }
 
   project = gitlab_project.this[each.value.project_name].id
   branch  = each.value.branch
@@ -62,18 +66,43 @@ resource "gitlab_branch_protection" "branch" {
 }
 
 resource "gitlab_project_approval_rule" "this" {
-  for_each = var.projects_enabled ? {
-    for p in var.gitlab_projects : p.name => p
-    if try(p.approval_rule.enabled, false)
-  } : {}
+  for_each = {
+    for row in flatten([
+      for p in var.gitlab_projects : concat(
+        [
+          for rule in [try(p.approval_rule, null)] : {
+            key                               = "${p.name}::${coalesce(try(rule.name, null), "Approval rule")}::0"
+            project_name                      = p.name
+            name                              = coalesce(try(rule.name, null), "Approval rule")
+            approvals_required                = coalesce(try(rule.approvals_required, null), 1)
+            applies_to_all_protected_branches = coalesce(try(rule.applies_to_all_protected_branches, null), false)
+            user_ids                          = try(rule.user_ids, null)
+            group_ids                         = try(rule.group_ids, null)
+          } if rule != null && can(keys(rule))
+        ],
+        [
+          for idx, rule in can(p.approval_rule[0]) ? p.approval_rule : [] : {
+            key                               = "${p.name}::${coalesce(try(rule.name, null), "Approval rule")}::${idx}"
+            project_name                      = p.name
+            name                              = coalesce(try(rule.name, null), "Approval rule")
+            approvals_required                = coalesce(try(rule.approvals_required, null), 1)
+            applies_to_all_protected_branches = coalesce(try(rule.applies_to_all_protected_branches, null), false)
+            user_ids                          = try(rule.user_ids, null)
+            group_ids                         = try(rule.group_ids, null)
+          } if can(rule.name)
+        ]
+      )
+    ]) : row.key => row
+    if var.projects_enabled
+  }
 
-  project = gitlab_project.this[each.key].id
+  project = gitlab_project.this[each.value.project_name].id
 
-  name               = coalesce(try(each.value.approval_rule.name, null), "Approval rule")
-  approvals_required = coalesce(try(each.value.approval_rule.approvals_required, null), 1)
+  name               = each.value.name
+  approvals_required = each.value.approvals_required
 
-  applies_to_all_protected_branches = coalesce(try(each.value.approval_rule.applies_to_all_protected_branches, null), false)
+  applies_to_all_protected_branches = each.value.applies_to_all_protected_branches
 
-  user_ids  = try(each.value.approval_rule.user_ids, null)
-  group_ids = try(each.value.approval_rule.group_ids, null)
+  user_ids  = each.value.user_ids
+  group_ids = each.value.group_ids
 }

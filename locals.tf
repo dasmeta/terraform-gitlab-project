@@ -15,14 +15,20 @@ locals {
     for p in var.gitlab_projects : merge(p, {
       namespace_id = coalesce(
         try(p.namespace_id, null),
-        length(var.gitlab_groups) > 0 ? lookup(
+        lookup(
           local.namespace_by_key,
-          coalesce(try(p.group_key, null), var.gitlab_groups[0].key),
+          coalesce(
+            try(p.group_key, null),
+            length(local.gitlab_groups_effective) == 1 ? local.gitlab_groups_effective[0].key : "__UNRESOLVED_GROUP_KEY__"
+          ),
           null
-        ) : null
+        )
       )
     })
   ]
 
-  gitlab_projects_for_children = local.effective_projects_enabled ? local.gitlab_projects_resolved : []
+  gitlab_projects_for_children = [
+    for p in local.gitlab_projects_resolved : p
+    if local.effective_projects_enabled
+  ]
 }

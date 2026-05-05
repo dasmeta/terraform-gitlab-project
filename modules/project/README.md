@@ -11,7 +11,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | 18.10.0 |
+| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | >= 18.8.2 |
 
 ## Modules
 
@@ -29,7 +29,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_gitlab_projects"></a> [gitlab\_projects](#input\_gitlab\_projects) | Same structure as the root module input `gitlab_projects` (see root `variables.tf`).<br/>Validated at the root module; this submodule uses `any` to avoid duplicating the full object type. | `any` | n/a | yes |
+| <a name="input_gitlab_projects"></a> [gitlab\_projects](#input\_gitlab\_projects) | Same structure as the root module input `gitlab_projects` (see root `variables.tf`).<br/>Validated and normalized at the root module; namespace resolution and<br/>ambiguous input rejection happen before this submodule consumes the objects.<br/>This submodule uses `any` to avoid duplicating the full object type. | `any` | n/a | yes |
 | <a name="input_projects_enabled"></a> [projects\_enabled](#input\_projects\_enabled) | When true, create one GitLab project per entry in gitlab\_projects. | `bool` | n/a | yes |
 
 ## Outputs

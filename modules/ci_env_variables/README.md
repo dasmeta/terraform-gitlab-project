@@ -27,8 +27,8 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_gitlab_projects"></a> [gitlab\_projects](#input\_gitlab\_projects) | Same shape as the root module variable gitlab\_projects. | `any` | n/a | yes |
-| <a name="input_global_env_variables"></a> [global\_env\_variables](#input\_global\_env\_variables) | Same shape as the root module variable global\_env\_variables. | `any` | n/a | yes |
+| <a name="input_gitlab_projects"></a> [gitlab\_projects](#input\_gitlab\_projects) | Same normalized shape as the root module variable gitlab\_projects, including resolved namespace behavior and project-level env\_variables. | `any` | n/a | yes |
+| <a name="input_global_env_variables"></a> [global\_env\_variables](#input\_global\_env\_variables) | Same shape as the root module variable global\_env\_variables; project-level env\_variables replace the full definition for matching keys. | `any` | n/a | yes |
 | <a name="input_project_ids"></a> [project\_ids](#input\_project\_ids) | Map of project name to GitLab project ID (from modules/project). | `map(number)` | n/a | yes |
 
 ## Outputs

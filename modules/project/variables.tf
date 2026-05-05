@@ -6,7 +6,9 @@ variable "projects_enabled" {
 variable "gitlab_projects" {
   description = <<-EOT
     Same structure as the root module input `gitlab_projects` (see root `variables.tf`).
-    Validated at the root module; this submodule uses `any` to avoid duplicating the full object type.
+    Validated and normalized at the root module; namespace resolution and
+    ambiguous input rejection happen before this submodule consumes the objects.
+    This submodule uses `any` to avoid duplicating the full object type.
   EOT
   type        = any
 }

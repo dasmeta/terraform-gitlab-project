@@ -27,10 +27,10 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_create"></a> [create](#input\_create) | When true, create one GitLab group. When false, no resources are created and outputs are null. | `bool` | `false` | no |
+| <a name="input_create"></a> [create](#input\_create) | When true, create one Terraform-managed GitLab group. Existing-group references are resolved in the root module and do not instantiate this child module. | `bool` | `false` | no |
 | <a name="input_description"></a> [description](#input\_description) | Group description. | `string` | `""` | no |
 | <a name="input_name"></a> [name](#input\_name) | Group display name (required when create is true). | `string` | `""` | no |
-| <a name="input_parent_id"></a> [parent\_id](#input\_parent\_id) | Optional parent group id for a subgroup. | `number` | `null` | no |
+| <a name="input_parent_id"></a> [parent\_id](#input\_parent\_id) | Optional parent group id for a managed subgroup. | `number` | `null` | no |
 | <a name="input_path"></a> [path](#input\_path) | Group URL path / slug (required when create is true). | `string` | `""` | no |
 | <a name="input_visibility_level"></a> [visibility\_level](#input\_visibility\_level) | private \| internal \| public | `string` | `"private"` | no |
 

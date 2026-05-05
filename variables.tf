@@ -17,10 +17,12 @@ variable "gitlab_groups" {
   }))
   default     = []
   description = <<-EOT
-    GitLab groups for this module (each entry needs a unique "key"). Set group_key on each gitlab_projects item to choose a group,
-    or set namespace_id on the project. With more than one entry here, every project must set group_key or namespace_id.
-    For create = false, set existing_group_id to the GitLab group's id so projects with matching group_key resolve there.
-    If this list is empty, every gitlab_projects item must set namespace_id.
+    GitLab groups for this module (each entry needs a unique "key"). Each entry must be one of two supported modes:
+    - managed group: set create = true and provide name + path
+    - existing group reference: set create = false and provide existing_group_id
+
+    Projects may resolve their namespace through group_key, or by the implicit single-group fallback when exactly one
+    gitlab_groups entry exists. If this list is empty, every gitlab_projects item must set namespace_id directly.
   EOT
 
   validation {
@@ -34,6 +36,14 @@ variable "gitlab_groups" {
       !g.create || (try(g.name, null) != null && try(g.path, null) != null)
     ])
     error_message = "When gitlab_groups[].create is true, name and path are required."
+  }
+
+  validation {
+    condition = alltrue([
+      for g in var.gitlab_groups :
+      g.create || try(g.existing_group_id, null) != null
+    ])
+    error_message = "When gitlab_groups[].create is false, existing_group_id is required."
   }
 }
 
@@ -54,78 +64,59 @@ variable "global_env_variables" {
 
 variable "gitlab_projects" {
   type = list(object({
-    name        = string           # GitLab project name (Terraform map key / for_each)
-    description = optional(string) # Project description; omit for none
-
-    visibility_level       = optional(string, "private") # private, internal, or public
-    default_branch         = optional(string, "develop") # Initial default branch name
-    initialize_with_readme = optional(bool, false)       # Create empty README on create
-    request_access_enabled = optional(bool, true)        # Allow users to request access
-    prevent_destroy        = optional(bool, true)        # Hint for operators only (not Terraform lifecycle)
-    namespace_id           = optional(number)            # Overrides group resolution when set
-    group_key              = optional(string)            # Match gitlab_groups[].key; omit when a single group is defined (uses that entry)
-    lfs_enabled            = optional(bool, true)        # Git LFS enabled
-    packages_enabled       = optional(bool, false)       # GitLab package registry
-
-    # Merge behavior — full UI mapping in this variable's description block below
-    squash_option = optional(string, "default_off")  # never | default_off | default_on | always
-    merge_method  = optional(string, "rebase_merge") # merge | rebase_merge | ff
-
-    only_allow_merge_if_pipeline_succeeds            = optional(bool, true)  # Block merge if latest pipeline failed
-    only_allow_merge_if_all_discussions_are_resolved = optional(bool, false) # Block merge if open threads
-    remove_source_branch_after_merge                 = optional(bool, true)  # Delete source branch after MR merge
-
-    ci_pipeline_variables_minimum_override_role = optional(string, "maintainer") # Min role for pipeline variables (GitLab 17.1+)
-
-    pages_access_level = optional(string, "private") # GitLab Pages: disabled, private, enabled, public
-
-    suggestion_commit_message = optional(string) # Suggested squash commit message template
-    merge_commit_template     = optional(string) # Merge commit message template
-
+    name                                             = string                         # Project name / slug key used by child resources
+    description                                      = optional(string)               # Project description
+    visibility_level                                 = optional(string, "private")    # private | internal | public
+    default_branch                                   = optional(string, "develop")    # Initial default branch name
+    initialize_with_readme                           = optional(bool, true)           # Create repository with README
+    request_access_enabled                           = optional(bool, true)           # Allow users to request access
+    prevent_destroy                                  = optional(bool, true)           # Contract hint only; not mapped to Terraform lifecycle
+    namespace_id                                     = optional(number)               # Explicit GitLab namespace id for the project
+    group_key                                        = optional(string)               # Resolve namespace through gitlab_groups[].key
+    lfs_enabled                                      = optional(bool, true)           # Enable Git LFS for the project
+    packages_enabled                                 = optional(bool, true)           # Enable GitLab package registry
+    squash_option                                    = optional(string, "default_on") # never | default_off | default_on | always
+    merge_method                                     = optional(string, "merge")      # merge | rebase_merge | ff
+    only_allow_merge_if_pipeline_succeeds            = optional(bool, true)           # Require successful pipeline before merge
+    only_allow_merge_if_all_discussions_are_resolved = optional(bool, true)           # Require resolved discussions before merge
+    remove_source_branch_after_merge                 = optional(bool, true)           # Auto-delete source branch after merge
+    ci_pipeline_variables_minimum_override_role      = optional(string, "developer")  # no_one_allowed | developer | maintainer | owner
+    pages_access_level                               = optional(string, "private")    # GitLab Pages visibility level
+    suggestion_commit_message                        = optional(string)               # Suggested squash commit message template
+    merge_commit_template                            = optional(string)               # Merge commit message template
     branch_protections = optional(list(object({
-      branch                       = string                         # Branch name or pattern to protect
-      merge_access_level           = optional(string, "maintainer") # Who can merge into this branch
-      push_access_level            = optional(string, "maintainer") # Who can push to this branch
-      allow_force_push             = optional(bool, false)          # Allow force push
-      code_owner_approval_required = optional(bool, false)          # Require CODEOWNERS approval when configured
-      unprotect_access_level       = optional(string)               # Who may unprotect; omit for provider default
-    })), [])                                                        # Empty = no branch protection rules from this module
-
-    approval_rule = optional(object({
-      enabled                           = optional(bool, false)             # Create gitlab_project_approval_rule when true
-      name                              = optional(string, "Approval rule") # Rule name in GitLab
-      approvals_required                = optional(number, 1)               # Required approval count before merge
-      applies_to_all_protected_branches = optional(bool, false)             # Apply to every protected branch
-      user_ids                          = optional(list(number))            # Approver user IDs; omit for GitLab defaults
-      group_ids                         = optional(list(number))            # Approver group IDs
-    }), null)                                                               # null = no approval_rule resource
-
-    push_rules = optional(list(object({
-      author_email_regex            = optional(string)      # Allowed author email pattern
-      branch_name_regex             = optional(string)      # Allowed branch name pattern
-      commit_committer_check        = optional(bool, false) # Require committer matches GitLab user
-      commit_message_negative_regex = optional(string)      # Reject commits matching this pattern
-      commit_message_regex          = optional(string)      # Require commit message to match
-      deny_delete_tag               = optional(bool, false) # Block tag deletion
-      file_name_regex               = optional(string)      # Block files matching this name pattern
-      max_file_size                 = optional(number)      # Max file size (MB / provider units)
-      member_check                  = optional(bool, false) # Restrict commits to project members
-      prevent_secrets               = optional(bool, false) # Reject secrets (GitLab push rule)
-      reject_unsigned_commits       = optional(bool, false) # Reject commits without verified signature
-    })), [])                                                # Empty = no push_rules block on gitlab_project
-
+      branch                       = string                         # Protected branch name
+      merge_access_level           = optional(string, "maintainer") # Merge access role
+      push_access_level            = optional(string, "maintainer") # Push access role
+      allow_force_push             = optional(bool, false)          # Allow force-push on the branch
+      code_owner_approval_required = optional(bool, false)          # Require code-owner approval
+      unprotect_access_level       = optional(string, "maintainer") # Unprotect access role
+    })), [])
+    approval_rule = optional(list(object({
+      name                              = optional(string, "Approval rule") # Approval rule display name
+      approvals_required                = optional(number, 1)               # Number of approvals required
+      applies_to_all_protected_branches = optional(bool, false)             # Apply rule to all protected branches
+      user_ids                          = optional(list(number))            # Explicit approver user ids
+      group_ids                         = optional(list(number))            # Explicit approver group ids
+    })), [])
+    push_rules = optional(list(any), []) # Provider-shaped push rules consumed by gitlab_project.push_rules
     env_variables = optional(list(object({
-      key       = string                # CI/CD variable name (overrides global_env_variables with same key)
-      value     = string                # Variable value
-      masked    = optional(bool, false) # Mask in logs where supported
-      protected = optional(bool, false) # Only on protected branches/tags
-    })), [])                            # Empty = only global_env_variables apply
-  }))                                   # Each list element defines one GitLab project to create/manage
-  # Long-form description for terraform-docs / consumers
+      key       = string                # CI/CD variable name
+      value     = string                # CI/CD variable value
+      masked    = optional(bool, false) # Hide value in logs / UI where supported
+      protected = optional(bool, false) # Restrict variable to protected refs
+    })), [])
+  }))
   description = <<-EOT
-    List of GitLab project configurations. Use group_key to select a namespace from var.gitlab_groups (must match an entry's key),
-    or set namespace_id. If gitlab_groups is non-empty, omitting group_key uses the first entry. If gitlab_groups is empty,
-    set namespace_id on every project.
+    List of GitLab project configurations.
+
+    Supported namespace selection paths:
+    - set namespace_id directly
+    - set group_key to select an entry from var.gitlab_groups
+    - omit both namespace_id and group_key only when exactly one gitlab_groups entry exists; that single group is used implicitly
+
+    Do not set namespace_id and group_key together on the same project.
+    When gitlab_groups is empty, set namespace_id on every project.
 
     Merge behavior (per project; GitLab UI under Settings → Merge requests):
 
@@ -141,22 +132,30 @@ variable "gitlab_projects" {
       - ff           → Fast-forward merge
 
     branch_protections — Optional list per project: Settings → Repository → Protected branches.
+    When omitted or set to [], this module creates one default protection for branch "main".
     Access is only via merge_access_level / push_access_level (maintainer, developer, admin, no one).
     Granular "specific users/groups" rows from the GitLab UI are not supported by provider resource gitlab_branch_protection.
 
-    approval_rule — Optional per project. Omitted or enabled = false: no rule. When the object is set, defaults are
-    enabled = false, name = "Approval rule", approvals_required = 1, applies_to_all_protected_branches = false;
-    enable the resource with enabled = true (user_ids / group_ids optional; omit for GitLab default approvers).
+    approval_rule — Optional per project. Accepts a list of approval rule objects.
+    When omitted or set to [], no project approval rule resources are created.
+    Defaults are name = "Approval rule", approvals_required = 1,
+    applies_to_all_protected_branches = false (user_ids / group_ids optional;
+    omit approver lists to use GitLab default approvers for the rule).
 
     prevent_destroy — Contract hint for operators and downstream tooling only; this module does not set Terraform lifecycle { prevent_destroy } from this field (dynamic lifecycle is not supported for count/for_each resources in the same way as static blocks).
 
     ci_pipeline_variables_minimum_override_role — CI/CD → Variables: minimum role that may run a new pipeline with pipeline variables (GitLab 17.1+).
     Valid values: no_one_allowed, developer, maintainer, owner. Default in type: maintainer.
 
-    env_variables — Per-project CI/CD variables (gitlab_project_variable via module ci_env_variables), merged with
-    var.global_env_variables; the same key on the project overrides the global value.
-  EOT
+    approval_rule — Optional per project. Accepts a list of approval rule objects.
+    If present and non-empty, the module creates one GitLab approval rule resource
+    per list entry. Defaults are name = "Approval rule", approvals_required = 1,
+    applies_to_all_protected_branches = false (user_ids / group_ids optional;
+    omit approver lists to use GitLab default approvers for the rule).
 
+    env_variables — Per-project CI/CD variables (gitlab_project_variable via module ci_env_variables), merged with
+    var.global_env_variables; the same key on the project replaces the full global variable definition for that project.
+  EOT
   validation {
     condition = alltrue([
       for p in var.gitlab_projects :
@@ -173,10 +172,34 @@ variable "gitlab_projects" {
   }
 
   validation {
-    condition = length(var.gitlab_groups) <= 1 || alltrue([
+    condition = alltrue([
       for p in var.gitlab_projects :
-      try(p.namespace_id, null) != null || try(p.group_key, null) != null
+      !(try(p.namespace_id, null) != null && try(p.group_key, null) != null)
     ])
-    error_message = "With multiple gitlab_groups entries, each gitlab_projects item must set namespace_id or group_key."
+    error_message = "Set either namespace_id or group_key for a project, but not both."
+  }
+
+  validation {
+    condition = alltrue([
+      for p in var.gitlab_projects :
+      try(p.group_key, null) == null || contains([for g in var.gitlab_groups : g.key], p.group_key)
+    ])
+    error_message = "gitlab_projects[].group_key must match a declared gitlab_groups[].key."
+  }
+
+  validation {
+    condition = alltrue([
+      for p in var.gitlab_projects :
+      try(p.namespace_id, null) != null ? true : (
+        length(var.gitlab_groups) == 0 ? false : length([
+          for g in var.gitlab_groups : g.key
+          if g.key == coalesce(
+            try(p.group_key, null),
+            length(var.gitlab_groups) == 1 ? var.gitlab_groups[0].key : "__UNRESOLVED_GROUP_KEY__"
+          ) && (g.create || try(g.existing_group_id, null) != null)
+        ]) == 1
+      )
+    ])
+    error_message = "Each project must resolve deterministically through namespace_id, a valid group_key, or the implicit single-group fallback backed by a creatable or existing group id."
   }
 }

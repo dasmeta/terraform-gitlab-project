@@ -4,7 +4,7 @@ output "gitlab_project_ids" {
 }
 
 output "gitlab_group_ids" {
-  description = "Map of group key (from gitlab_groups) to namespace id — use this for every group instead of a separate 'first group' id."
+  description = "Map of group key (from gitlab_groups) to namespace id for every resolvable configured group — managed groups contribute their created id and existing-group references require existing_group_id."
   value       = local.namespace_by_key
 }
 

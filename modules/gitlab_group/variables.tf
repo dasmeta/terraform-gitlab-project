@@ -1,6 +1,6 @@
 variable "create" {
   type        = bool
-  description = "When true, create one GitLab group. When false, no resources are created and outputs are null."
+  description = "When true, create one Terraform-managed GitLab group. Existing-group references are resolved in the root module and do not instantiate this child module."
   default     = false
 }
 
@@ -30,7 +30,7 @@ variable "visibility_level" {
 
 variable "parent_id" {
   type        = number
-  description = "Optional parent group id for a subgroup."
+  description = "Optional parent group id for a managed subgroup."
   default     = null
   nullable    = true
 }
