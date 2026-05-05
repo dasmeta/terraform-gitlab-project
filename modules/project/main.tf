@@ -8,25 +8,25 @@ resource "gitlab_project" "this" {
   description  = try(each.value.description, null)
   namespace_id = try(each.value.namespace_id, null)
 
-  visibility_level       = coalesce(try(each.value.visibility_level, null), "private")
-  default_branch         = coalesce(try(each.value.default_branch, null), "develop")
-  initialize_with_readme = coalesce(try(each.value.initialize_with_readme, null), true)
-  request_access_enabled = coalesce(try(each.value.request_access_enabled, null), true)
-  lfs_enabled            = coalesce(try(each.value.lfs_enabled, null), true)
-  packages_enabled       = coalesce(try(each.value.packages_enabled, null), true)
+  visibility_level       = each.value.visibility_level
+  default_branch         = each.value.default_branch
+  initialize_with_readme = each.value.initialize_with_readme
+  request_access_enabled = each.value.request_access_enabled
+  lfs_enabled            = each.value.lfs_enabled
+  packages_enabled       = each.value.packages_enabled
 
-  squash_option = coalesce(try(each.value.squash_option, null), "default_on")
-  merge_method  = coalesce(try(each.value.merge_method, null), "merge")
+  squash_option = each.value.squash_option
+  merge_method  = each.value.merge_method
 
-  only_allow_merge_if_pipeline_succeeds = coalesce(try(each.value.only_allow_merge_if_pipeline_succeeds, null), true)
+  only_allow_merge_if_pipeline_succeeds = each.value.only_allow_merge_if_pipeline_succeeds
 
-  ci_pipeline_variables_minimum_override_role = coalesce(try(each.value.ci_pipeline_variables_minimum_override_role, null), "developer")
+  ci_pipeline_variables_minimum_override_role = each.value.ci_pipeline_variables_minimum_override_role
 
-  only_allow_merge_if_all_discussions_are_resolved = coalesce(try(each.value.only_allow_merge_if_all_discussions_are_resolved, null), true)
+  only_allow_merge_if_all_discussions_are_resolved = each.value.only_allow_merge_if_all_discussions_are_resolved
 
-  remove_source_branch_after_merge = coalesce(try(each.value.remove_source_branch_after_merge, null), true)
+  remove_source_branch_after_merge = each.value.remove_source_branch_after_merge
 
-  pages_access_level = coalesce(try(each.value.pages_access_level, null), "private")
+  pages_access_level = each.value.pages_access_level
 
   suggestion_commit_message = try(each.value.suggestion_commit_message, null)
   merge_commit_template     = try(each.value.merge_commit_template, null)

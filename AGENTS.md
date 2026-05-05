@@ -1,6 +1,6 @@
 # terraform-gitlab-project Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-10
+Auto-generated from all feature plans. Last updated: 2026-05-05
 
 ## Active Technologies
 - HCL/Terraform module repository with Markdown planning artifacts; Terraform CLI version is repository-managed rather than declared in `version.tf` + `gitlabhq/gitlab >= 18.8.2`, `pre-commit`, `pre-commit-terraform`, Node-based repository automation (002-module-improvement-roadmap)

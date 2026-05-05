@@ -12,38 +12,17 @@ locals {
   )
 
   gitlab_projects_resolved = [
-    for p in var.gitlab_projects : merge({
-      description                                      = null
-      visibility_level                                 = "private"
-      default_branch                                   = "develop"
-      initialize_with_readme                           = true
-      request_access_enabled                           = true
-      prevent_destroy                                  = true
-      namespace_id                                     = null
-      group_key                                        = null
-      lfs_enabled                                      = true
-      packages_enabled                                 = true
-      squash_option                                    = "default_on"
-      merge_method                                     = "merge"
-      only_allow_merge_if_pipeline_succeeds            = true
-      only_allow_merge_if_all_discussions_are_resolved = true
-      remove_source_branch_after_merge                 = true
-      ci_pipeline_variables_minimum_override_role      = "developer"
-      pages_access_level                               = "private"
-      suggestion_commit_message                        = null
-      merge_commit_template                            = null
-      branch_protections                               = []
-      approval_rule                                    = null
-      push_rules                                       = []
-      env_variables                                    = []
-      }, p, {
+    for p in var.gitlab_projects : merge(p, {
       namespace_id = coalesce(
         try(p.namespace_id, null),
-        length(var.gitlab_groups) > 0 ? lookup(
+        lookup(
           local.namespace_by_key,
-          coalesce(try(p.group_key, null), var.gitlab_groups[0].key),
+          coalesce(
+            try(p.group_key, null),
+            length(local.gitlab_groups_effective) == 1 ? local.gitlab_groups_effective[0].key : "__UNRESOLVED_GROUP_KEY__"
+          ),
           null
-        ) : null
+        )
       )
     })
   ]

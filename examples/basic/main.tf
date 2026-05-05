@@ -34,7 +34,7 @@ module "gitlab" {
       name             = "First Group"
       path             = "example-team-a-tf"
       description      = "First group — one repo in this example"
-      parent_id        = "" # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
+      parent_id        = null # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
       visibility_level = "private"
     },
     {
@@ -43,7 +43,7 @@ module "gitlab" {
       name             = "Second Group"
       path             = "example-team-b-tf"
       description      = "Second group — two repos in this example"
-      parent_id        = "" # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
+      parent_id        = null # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
       visibility_level = "private"
     },
   ]
@@ -79,7 +79,7 @@ module "gitlab" {
       env_variables = [
         { key = "SERVICE_THREE_DEPLOY_TARGET", value = "staging" },
         { key = "SERVICE_THREE_BUILD_ARGS", value = "--profile=service-three" },
-        { key = "GLOBAL_LOG_LEVEL", value = "debug" }, # Overrides the global variable with the same key
+        { key = "GLOBAL_LOG_LEVEL", value = "debug" }, # Replaces the full global definition with the same key
       ]
     },
   ]

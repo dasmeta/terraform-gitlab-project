@@ -1,5 +1,16 @@
 # basic
 
+This example demonstrates the supported multi-group workflow:
+
+- each project resolves its namespace through an explicit `group_key`
+- each group is in managed-group mode with `create = true`
+- project-level `env_variables` can replace a shared variable definition by
+  reusing the same key
+
+Use this example when you want multiple repositories spread across multiple
+GitLab groups. If you have exactly one group, the root module also supports the
+implicit single-group fallback described in the root README.
+
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 

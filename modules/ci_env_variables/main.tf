@@ -2,6 +2,8 @@ locals {
   project_env_variables = {
     for item in flatten([
       for p in var.gitlab_projects : [
+        # Project-level env_variables replace the full global definition when
+        # the same key appears in both scopes.
         for key, env in merge(
           { for e in var.global_env_variables : e.key => e },
           { for e in lookup(p, "env_variables", []) : e.key => e }
