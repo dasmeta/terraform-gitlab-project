@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+"""
+Uninstall all Helm releases declared in config/applications.yaml.
+
+Targets:
+1) deployments[*].helm_release
+2) infra_deployments[*].release
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+import yaml  # type: ignore
+
+ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_CONFIG_PATH = ROOT / "config" / "applications.yaml"
+CLEANUP_CONFIG = json.loads(${jsonencode(jsonencode(cleanup_config))})
+
+
+def cfg_value(defaults: dict[str, Any], key: str, env_name: str, fallback: Any = None) -> Any:
+    value = os.environ.get(env_name)
+    if value not in (None, ""):
+        return value
+    value = defaults.get(key)
+    if value not in (None, ""):
+        return value
+    return fallback
+
+
+def cfg_int(defaults: dict[str, Any], key: str, env_name: str, fallback: int) -> int:
+    value = cfg_value(defaults, key, env_name, fallback)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def run(cmd: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
+    print("+ " + " ".join(cmd), flush=True)
+    return subprocess.run(cmd, check=check, text=True)
+
+
+def truncate_ns(name: str, max_len: int = 63) -> str:
+    name = name.strip().lower().replace("_", "-")
+    if len(name) <= max_len:
+        return name
+    return name[:max_len].rstrip("-")
+
+
+def resolve_namespace(cli_namespace: str | None) -> str:
+    if cli_namespace:
+        return truncate_ns(cli_namespace)
+    ci_ref_slug = os.environ.get("CI_COMMIT_REF_SLUG", "manual")
+    namespace_prefix = str(cfg_value(CLEANUP_CONFIG, "namespace_prefix", "NAMESPACE_PREFIX", "e2e-"))
+    raw_ns = os.environ.get("DYNAMIC_NAMESPACE") or f"{namespace_prefix}{ci_ref_slug}"
+    return truncate_ns(raw_ns)
+
+
+def load_config(config_path: Path) -> dict[str, Any]:
+    with config_path.open(encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def collect_releases(cfg: dict[str, Any]) -> list[str]:
+    deployments = cfg.get("deployments") or []
+    infra_deployments = cfg.get("infra_deployments") or []
+
+    releases: list[str] = []
+    seen: set[str] = set()
+
+    # Uninstall applications first, then infra dependencies.
+    for item in reversed(deployments):
+        release = str(item.get("helm_release") or "").strip()
+        if release and release not in seen:
+            releases.append(release)
+            seen.add(release)
+
+    for item in reversed(infra_deployments):
+        release = str(item.get("release") or "").strip()
+        if release and release not in seen:
+            releases.append(release)
+            seen.add(release)
+
+    return releases
+
+
+def is_release_missing_error(output: str) -> bool:
+    lowered = output.lower()
+    return (
+        "release not loaded" in lowered
+        or "release: not found" in lowered
+        or "release not found" in lowered
+        or "no deployed releases" in lowered
+    )
+
+
+def is_transient_gitlab_agent_error(output: str) -> bool:
+    lowered = output.lower()
+    return (
+        "gitlab agent server" in lowered
+        and "context canceled" in lowered
+    ) or "failed to read grpc response" in lowered
+
+
+def uninstall_releases(
+    namespace: str,
+    releases: list[str],
+    *,
+    dry_run: bool,
+    strict: bool,
+    max_attempts: int,
+    retry_backoff_seconds: int,
+) -> None:
+    if not releases:
+        print("No releases found in config. Nothing to clean.", flush=True)
+        return
+
+    print(f"Namespace: {namespace}", flush=True)
+    print(f"Releases to uninstall ({len(releases)}): {', '.join(releases)}", flush=True)
+
+    failed_releases: list[str] = []
+    for release in releases:
+        cmd = [
+            "helm",
+            "uninstall",
+            release,
+            "-n",
+            namespace
+        ]
+        if dry_run:
+            print("[dry-run] " + " ".join(cmd), flush=True)
+            continue
+
+        for attempt in range(1, max_attempts + 1):
+            print("+ " + " ".join(cmd), flush=True)
+            proc = subprocess.run(cmd, check=False, text=True, capture_output=True)
+            if proc.stdout:
+                print(proc.stdout, end="", flush=True)
+            if proc.stderr:
+                print(proc.stderr, end="", file=sys.stderr, flush=True)
+
+            if proc.returncode == 0:
+                break
+
+            combined = (proc.stdout or "") + "\n" + (proc.stderr or "")
+            if is_release_missing_error(combined):
+                print(f"Skipping {release}: not loaded/not found.", flush=True)
+                break
+
+            if is_transient_gitlab_agent_error(combined) and attempt < max_attempts:
+                sleep_seconds = attempt * retry_backoff_seconds
+                print(
+                    "WARN: transient GitLab Agent gRPC cancellation during Helm uninstall; "
+                    f"retrying in {sleep_seconds}s (attempt {attempt}/{max_attempts})",
+                    flush=True,
+                )
+                time.sleep(sleep_seconds)
+                continue
+
+            message = f"Failed to uninstall {release} (exit={proc.returncode})."
+            if strict:
+                raise subprocess.CalledProcessError(
+                    proc.returncode, cmd, output=proc.stdout, stderr=proc.stderr
+                )
+            print(f"WARN: {message} Continuing cleanup.", flush=True)
+            failed_releases.append(release)
+            break
+
+    if failed_releases:
+        print(
+            "Cleanup finished with non-fatal uninstall failures: "
+            + ", ".join(failed_releases),
+            flush=True,
+        )
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Uninstall all Helm releases declared in applications.yaml.",
+    )
+    parser.add_argument(
+        "--namespace",
+        help="Kubernetes namespace. Defaults to DYNAMIC_NAMESPACE or e2e-$CI_COMMIT_REF_SLUG.",
+    )
+    parser.add_argument(
+        "--config",
+        default=str(DEFAULT_CONFIG_PATH),
+        help=f"Path to applications.yaml (default: {DEFAULT_CONFIG_PATH})",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print planned uninstall commands without executing them.",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail immediately on uninstall errors (default is best-effort cleanup).",
+    )
+    parser.add_argument(
+        "--max-attempts",
+        type=int,
+        help="Maximum uninstall attempts. Defaults to cleanup_config.max_attempts, CLEANUP_MAX_ATTEMPTS, or 3.",
+    )
+    parser.add_argument(
+        "--retry-backoff-seconds",
+        type=int,
+        help="Retry backoff multiplier in seconds. Defaults to cleanup_config.retry_backoff_seconds, CLEANUP_RETRY_BACKOFF_SECONDS, or 5.",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    config_path = Path(args.config).resolve()
+    if not config_path.is_file():
+        print(f"ERROR: config file not found: {config_path}", file=sys.stderr)
+        sys.exit(1)
+
+    cfg = load_config(config_path)
+    namespace = resolve_namespace(args.namespace)
+    releases = collect_releases(cfg)
+    max_attempts = max(1, args.max_attempts or cfg_int(CLEANUP_CONFIG, "max_attempts", "CLEANUP_MAX_ATTEMPTS", 3))
+    retry_backoff_seconds = (
+        args.retry_backoff_seconds
+        or cfg_int(CLEANUP_CONFIG, "retry_backoff_seconds", "CLEANUP_RETRY_BACKOFF_SECONDS", 5)
+    )
+    retry_backoff_seconds = max(0, retry_backoff_seconds)
+    uninstall_releases(
+        namespace,
+        releases,
+        dry_run=args.dry_run,
+        strict=args.strict,
+        max_attempts=max_attempts,
+        retry_backoff_seconds=retry_backoff_seconds,
+    )
+
+    if args.dry_run:
+        print("Dry run complete.", flush=True)
+    else:
+        print("Cleanup complete.", flush=True)
+
+
+if __name__ == "__main__":
+    main()
