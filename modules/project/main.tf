@@ -32,7 +32,6 @@ resource "gitlab_project" "this" {
   merge_commit_template     = try(each.value.merge_commit_template, null)
   squash_commit_template    = try(each.value.squash_commit_template, null)
 
-  approvals_before_merge            = try(each.value.approvals_before_merge, null)
   resolve_outdated_diff_discussions = try(each.value.resolve_outdated_diff_discussions, null)
 
   dynamic "push_rules" {

@@ -85,7 +85,6 @@ variable "gitlab_projects" {
     suggestion_commit_message                        = optional(string)               # Suggested squash commit message template
     merge_commit_template                            = optional(string)               # Merge commit message template
     squash_commit_template                           = optional(string)               # Squash commit message template
-    approvals_before_merge                           = optional(number)               # Deprecated provider field retained for importing existing projects without drift
     resolve_outdated_diff_discussions                = optional(bool)                 # Automatically resolve outdated diff discussions
     branch_protections_enabled                       = optional(bool, true)           # Create branch protection resources for this project
     branch_protections = optional(list(object({
