@@ -84,6 +84,9 @@ variable "gitlab_projects" {
     pages_access_level                               = optional(string, "private")    # GitLab Pages visibility level
     suggestion_commit_message                        = optional(string)               # Suggested squash commit message template
     merge_commit_template                            = optional(string)               # Merge commit message template
+    squash_commit_template                           = optional(string)               # Squash commit message template
+    resolve_outdated_diff_discussions                = optional(bool)                 # Automatically resolve outdated diff discussions
+    branch_protections_enabled                       = optional(bool, true)           # Create branch protection resources for this project
     branch_protections = optional(list(object({
       branch                       = string                         # Protected branch name
       merge_access_level           = optional(string, "maintainer") # Merge access role
@@ -182,7 +185,7 @@ variable "gitlab_projects" {
   validation {
     condition = alltrue([
       for p in var.gitlab_projects :
-      try(p.group_key, null) == null || contains([for g in var.gitlab_groups : g.key], p.group_key)
+      try(p.group_key, null) == null || contains([for g in var.gitlab_groups : g.key], coalesce(try(p.group_key, null), "__UNRESOLVED_GROUP_KEY__"))
     ])
     error_message = "gitlab_projects[].group_key must match a declared gitlab_groups[].key."
   }
