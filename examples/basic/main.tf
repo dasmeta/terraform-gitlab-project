@@ -1,7 +1,6 @@
 # Two GitLab groups: one project in the first group, two in the second (`gitlab_groups` + `group_key`).
 #
 #   export GITLAB_TOKEN='replace-with-gitlab-token'
-#   aws eks update-kubeconfig --region us-east-2 --name eks-dev
 #   terraform init && terraform apply
 # On GitLab.com, API-created groups often need parent_group_id (subgroup under an existing namespace).
 

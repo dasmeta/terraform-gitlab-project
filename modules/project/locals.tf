@@ -1,7 +1,7 @@
 locals {
   # One gitlab_branch_protection per (project name, branch). Keys must be unique per project.
   branch_protections_flat = flatten([
-    for p in var.gitlab_projects : [
+    for p in var.gitlab_projects : try(p.branch_protections_enabled, true) ? [
       for bp in length(try(p.branch_protections, [])) > 0 ? p.branch_protections : [{ branch = "main" }] : {
         key                          = "${p.name}::${bp.branch}"
         project_name                 = p.name
@@ -12,6 +12,6 @@ locals {
         code_owner_approval_required = coalesce(try(bp.code_owner_approval_required, null), false)
         unprotect_access_level       = coalesce(try(bp.unprotect_access_level, null), "maintainer")
       }
-    ]
+    ] : []
   ])
 }
