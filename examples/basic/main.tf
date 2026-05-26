@@ -16,8 +16,12 @@ module "gitlab" {
   projects_enabled = true
 
   global_env_variables = [
-    { key = "GLOBAL_CI_TOKEN", value = "replace-with-shared-ci-token", masked = false },
-    { key = "GLOBAL_LOG_LEVEL", value = "info" },
+    { key = "AWS_ACCESS_KEY_ID", value = "replace-with-aws-access-key-id", masked = true },
+    { key = "AWS_SECRET_ACCESS_KEY", value = "replace-with-aws-secret-access-key", masked = true },
+    { key = "AWS_SESSION_TOKEN", value = "replace-with-aws-session-token", masked = true },
+    { key = "AWS_REGION", value = "replace-with-aws-region" },
+    { key = "AWS_ECR_REGISTRY", value = "replace-with-aws-ecr-registry" },
+    { key = "ECR_REPOSITORY_NAME", value = "replace-with-ecr-repository-name" },
   ]
 
   gitlab_groups = [
@@ -27,7 +31,7 @@ module "gitlab" {
       name             = "First Group"
       path             = "example-team-a-tf"
       description      = "First group — one repo in this example"
-      parent_id        = 129092988 # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
+      parent_id        = null # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
       visibility_level = "private"
     },
     {
@@ -36,7 +40,7 @@ module "gitlab" {
       name             = "Second Group"
       path             = "example-team-b-tf"
       description      = "Second group — two repos in this example"
-      parent_id        = 129092988 # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
+      parent_id        = null # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
       visibility_level = "private"
     },
   ]
@@ -72,6 +76,7 @@ module "gitlab" {
       dynamic_environment = {
         enabled = true
       }
+
       only_allow_merge_if_pipeline_succeeds = false
       initialize_with_readme                = true
       branch_protections = [

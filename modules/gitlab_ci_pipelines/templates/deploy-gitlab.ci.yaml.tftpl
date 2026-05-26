@@ -1,0 +1,88 @@
+.deploy:
+  stage: deploy
+%{ if environment_enabled ~}
+  environment:
+    name: $DEPLOY_ENVIRONMENT_NAME
+    kubernetes:
+      agent: $DEPLOY_ENVIRONMENT_KUBERNETES_AGENT
+      dashboard:
+        namespace: $DEPLOY_ENVIRONMENT_DASHBOARD_NAMESPACE
+%{ endif ~}
+%{ if length(tags) > 0 ~}
+  tags:
+%{ for tag in tags ~}
+    - ${tag}
+%{ endfor ~}
+%{ endif ~}
+  image:
+    name: ${deploy_image.name}
+    entrypoint: ${jsonencode(deploy_image.entrypoint)}
+  before_script:
+    - helm version
+    - kubectl version --client || true
+    - |
+      if [ -n "$${AWS_EKS_CLUSTER_NAME:-}" ]; then
+        : "$${AWS_REGION:?AWS_REGION must be set when AWS_EKS_CLUSTER_NAME is set}"
+        aws --region "$${AWS_REGION}" eks update-kubeconfig --name "$${AWS_EKS_CLUSTER_NAME}"
+      fi
+    - |
+      if [ -n "$${KUBE_CONTEXT:-}" ]; then
+        kubectl config use-context "$${KUBE_CONTEXT}"
+      fi
+    - |
+      if [ -n "$${HELM_REPOSITORY_NAME:-}" ] && [ -n "$${HELM_REPOSITORY_URL:-}" ]; then
+        helm repo add "$${HELM_REPOSITORY_NAME}" "$${HELM_REPOSITORY_URL}" || true
+        helm repo update
+      fi
+  script:
+    - |
+      set -eu
+
+      : "$${KUBE_NAMESPACE:?KUBE_NAMESPACE must be set}"
+      : "$${HELM_RELEASE:?HELM_RELEASE must be set}"
+      : "$${HELM_CHART:?HELM_CHART must be set}"
+
+      if [ "$${KUBE_NAMESPACE_CREATE:-true}" = "true" ]; then
+        kubectl create namespace "$${KUBE_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+      fi
+
+      CHART_VERSION_FLAG=""
+      VALUES_ARGS="$${HELM_VALUES_ARGS:-}"
+      SET_ARGS="$${HELM_SET_ARGS:-}"
+      EXTRA_ARGS="$${HELM_EXTRA_ARGS:-}"
+      IMAGE_REPOSITORY_SET_ARG=""
+      IMAGE_TAG_SET_ARG=""
+      WAIT_FLAG="--wait"
+      NAMESPACE_CREATE_FLAG=""
+
+      if [ -n "$${HELM_CHART_VERSION:-}" ]; then
+        CHART_VERSION_FLAG="--version \"$${HELM_CHART_VERSION}\""
+      fi
+
+      if [ -n "$${DEPLOY_IMAGE_REPOSITORY:-}" ] && [ -n "$${HELM_IMAGE_REPOSITORY_SET_PATH:-}" ]; then
+        IMAGE_REPOSITORY_SET_ARG="--set $${HELM_IMAGE_REPOSITORY_SET_PATH}=$${DEPLOY_IMAGE_REPOSITORY}"
+      fi
+
+      if [ -n "$${DEPLOY_IMAGE_TAG:-}" ] && [ -n "$${HELM_IMAGE_TAG_SET_PATH:-}" ]; then
+        IMAGE_TAG_SET_ARG="--set $${HELM_IMAGE_TAG_SET_PATH}=$${DEPLOY_IMAGE_TAG}"
+      fi
+
+      if [ "$${HELM_WAIT:-true}" != "true" ]; then
+        WAIT_FLAG=""
+      fi
+
+      if [ "$${KUBE_NAMESPACE_CREATE:-true}" = "true" ]; then
+        NAMESPACE_CREATE_FLAG="--create-namespace"
+      fi
+
+      eval "helm upgrade --install \"$${HELM_RELEASE}\" \"$${HELM_CHART}\" \
+        --namespace \"$${KUBE_NAMESPACE}\" \
+        $${NAMESPACE_CREATE_FLAG} \
+        $${WAIT_FLAG} \
+        --timeout \"$${HELM_TIMEOUT:-40m}\" \
+        $${CHART_VERSION_FLAG} \
+        $${VALUES_ARGS} \
+        $${SET_ARGS} \
+        $${IMAGE_REPOSITORY_SET_ARG} \
+        $${IMAGE_TAG_SET_ARG} \
+        $${EXTRA_ARGS}"

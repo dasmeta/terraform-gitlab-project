@@ -5,14 +5,14 @@
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | >= 18.8.2 |
+| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | = 18.8.2 |
 | <a name="requirement_null"></a> [null](#requirement\_null) | >= 3.2.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | >= 18.8.2 |
+| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | = 18.8.2 |
 | <a name="provider_null"></a> [null](#provider\_null) | >= 3.2.0 |
 
 ## Modules
@@ -23,11 +23,11 @@ No modules.
 
 | Name | Type |
 |------|------|
-| [gitlab_branch.dynamic_environment_central](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/branch) | resource |
-| [gitlab_branch.dynamic_environment_service](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/branch) | resource |
-| [gitlab_project.dynamic_environment](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/project) | resource |
-| [gitlab_repository_file.dynamic_environment_central](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/repository_file) | resource |
-| [gitlab_repository_file.dynamic_environment_service](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/repository_file) | resource |
+| [gitlab_branch.dynamic_environment_central](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/branch) | resource |
+| [gitlab_branch.dynamic_environment_service](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/branch) | resource |
+| [gitlab_project.dynamic_environment](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/project) | resource |
+| [gitlab_repository_file.dynamic_environment_central](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/repository_file) | resource |
+| [gitlab_repository_file.dynamic_environment_service](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/repository_file) | resource |
 | [null_resource.dynamic_environment_central_mr](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [null_resource.dynamic_environment_service_mr](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 

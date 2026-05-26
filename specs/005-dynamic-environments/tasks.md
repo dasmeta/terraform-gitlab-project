@@ -79,6 +79,38 @@
 - [x] T038 [DMVP-10061] Add optional Helm deployment for the `gitlab/gitlab-agent` chart
 - [x] T039 [DMVP-10061] Document that generated agent tokens are sensitive and stored in Terraform state when registration/install is enabled
 
+## Phase 8: DMVP-1150 - Reusable Build Pipeline Generation
+
+**Goal**: Generate `ci-pipelines/build.gitlab-ci.yml` for managed
+service repositories through a dedicated reusable CI pipeline submodule.
+
+**Independent Test**: Terraform validates generated branch, repository-file,
+and MR resources for each managed project. Rendered content contains one hidden
+`.build` template with runtime-configurable build behavior.
+
+- [x] T040 [DMVP-1150] Add optional `gitlab_projects[].build_pipeline` schema in `variables.tf`
+- [x] T041 [DMVP-1150] Add dedicated `modules/gitlab_ci_pipelines` submodule for reusable CI pipeline generation
+- [x] T042 [DMVP-1150] Wire root module inputs and outputs to `modules/gitlab_ci_pipelines`
+- [x] T043 [DMVP-1150] Generate one hidden `.build` job through a submodule template file, with fixed stage, configurable image/service blocks, and runtime `BUILD_MODE`/`REGISTRY_PROVIDER` behavior
+- [x] T044 [DMVP-1150] Keep concrete jobs, stages, variables, needs, rules, hooks, and deploy behavior out of the generated build template file
+- [x] T046 [DMVP-1150] Add branch, repository-file, and merge-request resources for `ci-pipelines/build.gitlab-ci.yml`
+- [x] T047 [DMVP-1150] Update README and `examples/basic/` with build-only pipeline usage and manual include instructions
+
+## Phase 9: Reusable Deploy Pipeline Generation
+
+**Goal**: Generate `ci-pipelines/deploy.gitlab-ci.yml` for managed service
+repositories through the reusable CI pipeline submodule.
+
+**Independent Test**: Terraform validates generated branch, repository-file,
+and MR resources for each opted-in managed project. Rendered content contains
+one hidden `.deploy` template with runtime-configurable Helm deploy behavior.
+
+- [x] T048 Add optional `gitlab_projects[].deploy_pipeline` schema in `variables.tf`
+- [x] T049 Generate one hidden `.deploy` job through a submodule template file, with fixed stage, configurable image block, Kubernetes context selection, and Helm deploy behavior
+- [x] T050 Add branch, repository-file, and merge-request resources for `ci-pipelines/deploy.gitlab-ci.yml`
+- [x] T051 Wire deploy outputs through `modules/gitlab_ci_pipelines` and root `outputs.tf`
+- [x] T052 Update README, example, and Speckit artifacts with deploy template usage and manual include instructions
+
 ## Dependencies
 
 - Phase 1 must complete before Phase 2.

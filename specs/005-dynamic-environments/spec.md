@@ -11,7 +11,8 @@
 - **Affected Files or Directories**: `variables.tf`, `locals.tf`, `main.tf`,
   `outputs.tf`, `README.md`, `examples/basic/`, generated template content for
   central dynamic-environment repository files, service-repository CI trigger
-  files, and tests or validation artifacts that prove the behavior
+  files, reusable build-only pipeline files, and tests or validation
+  artifacts that prove the behavior
 - **Current Consumer Interface**: The root module manages GitLab groups,
   projects, per-project settings, branch protections, approval rules, and
   CI/CD variables through `gitlab_groups`, `gitlab_projects`, and
@@ -22,11 +23,17 @@
   `config/applications.yaml` and optional GitLab Agent configuration generation
   in an infrastructure repository; add an optional
   `gitlab_projects[].dynamic_environment` object that controls service
-  repository trigger-file branch and merge-request generation
+  repository trigger-file branch and merge-request generation; add optional
+  `gitlab_projects[].build_pipeline` for reusable hidden service build
+  template generation and optional `gitlab_projects[].deploy_pipeline` for
+  reusable hidden service Helm deploy template generation through
+  `modules/gitlab_ci_pipelines`
 - **Breaking Change**: No
 - **Interface Widening**: Yes, approved by DMVP-10007 refinement; the module
   gains a bounded dynamic environments feature but does not change existing
-  project, group, or CI variable behavior when omitted
+  project, group, or CI variable behavior when omitted. DMVP-1150 adds
+  opt-in per-project `build_pipeline` generation so existing
+  consumers can adopt the new file incrementally
 - **Docs, Examples, and Tests Impact**: README, examples, generated content
   expectations, validation, and Terraform formatting/validation must be updated
   together with the new inputs and resources
@@ -163,6 +170,60 @@ project.
 
 ---
 
+### User Story 5 - Generate Reusable Build Pipeline Files (Priority: P1)
+
+As a platform operator, I want managed application repositories to receive a
+reviewable reusable build CI pipeline file so service repositories can
+consume standard Docker build behavior without hand-written per-repository CI
+duplication.
+
+**Why this priority**: Application repositories need a consistent generated CI
+entrypoint before the platform can standardize build, deploy, and dynamic
+environment metadata across service repositories.
+
+**Independent Test**: Validate that Terraform creates branch, repository-file,
+and merge-request resources for `ci-pipelines/build.gitlab-ci.yml` in
+each managed project, and that the rendered file contains one hidden `.build`
+template.
+
+**Acceptance Scenarios**:
+
+1. **Given** a managed project is managed by the module, **When** the consumer
+   validates the module, **Then** Terraform plans a generated reusable build
+   pipeline file for that project.
+2. **Given** the build-only pipeline file is generated, **When** reviewers
+   inspect it, **Then** it contains only one hidden `.build` template.
+3. **Given** concrete build jobs are needed, **When** the consumer configures
+   CI, **Then** those jobs stay in the root CI file or another
+   consumer-owned include and use `extends: .build`.
+
+---
+
+### User Story 6 - Generate Reusable Deploy Pipeline Files (Priority: P1)
+
+As a platform operator, I want managed application repositories to receive a
+reviewable reusable deploy CI pipeline file so service repositories can
+consume standard Kubernetes Helm deploy behavior without hand-written
+per-repository CI duplication.
+
+**Independent Test**: Validate that Terraform creates branch, repository-file,
+and merge-request resources for `ci-pipelines/deploy.gitlab-ci.yml` in each
+managed project, and that the rendered file contains one hidden `.deploy`
+template.
+
+**Acceptance Scenarios**:
+
+1. **Given** a managed project opts into deploy pipeline generation, **When**
+   the consumer validates the module, **Then** Terraform plans a generated
+   reusable deploy pipeline file for that project.
+2. **Given** the deploy pipeline file is generated, **When** reviewers inspect
+   it, **Then** it contains only one hidden `.deploy` template.
+3. **Given** concrete deploy jobs are needed, **When** the consumer configures
+   CI, **Then** those jobs stay in the root CI file or another
+   consumer-owned include and use `extends: .deploy`.
+
+---
+
 ### Edge Cases
 
 - `dynamic_environments_project.enabled` may be false while service projects
@@ -181,6 +242,10 @@ project.
 - Re-applying the module should update Terraform-managed
   `feature/dynamic-environments` branches and generated files rather than
   requiring manual cleanup.
+- `build_pipeline` must not render concrete jobs such as `build`.
+- `deploy_pipeline` must not render concrete jobs such as `deploy`.
+- Root `.gitlab-ci.yml` and `.gitlab-ci.yaml` files must not be modified by
+  reusable build or deploy pipeline generation.
 
 ## Requirements *(mandatory)*
 
@@ -249,6 +314,64 @@ project.
   using the generated token and configured KAS address.
 - **FR-023**: Documentation MUST state that enabling registration/install stores
   the sensitive generated agent token in Terraform state.
+- **FR-024**: Terraform MUST generate
+  `ci-pipelines/build.gitlab-ci.yml` for every managed project through a
+  dedicated reusable CI pipeline submodule.
+- **FR-025**: The generated build pipeline file MUST include one hidden
+  `.build` job, and reusable deploy behavior MUST live in a separate generated
+  deploy pipeline file rather than inside `ci-pipelines/build.gitlab-ci.yml`.
+- **FR-026**: The generated build pipeline file MUST NOT render global
+  `stages` or global `variables`; those remain consumer-managed.
+- **FR-027**: The generated build pipeline file MUST be rendered through a
+  template file inside `modules/gitlab_ci_pipelines`.
+- **FR-028**: The hidden `.build` template MUST render `stage: build`,
+  `amazon/aws-cli` with empty entrypoint, and `docker:dind` with Docker TLS
+  disabled by default, while allowing the image and service blocks to be
+  overridden.
+- **FR-029**: The hidden `.build` template MUST render `tags` only when
+  `build_pipeline.tags` is non-empty.
+- **FR-030**: Concrete service jobs MUST consume the generated hidden template
+  through `extends: .build` and configure build behavior through CI variables
+  rather than by replacing the generated script.
+- **FR-031**: The hidden `.build` template MUST support `BUILD_MODE=docker`
+  and `BUILD_MODE=buildx`.
+- **FR-032**: The hidden `.build` template MUST support
+  `REGISTRY_PROVIDER=ecr|dockerhub`.
+- **FR-033**: The hidden `.build` template MUST push images to
+  `${IMAGE_REPOSITORY}:${IMAGE_TAG}` and require `IMAGE_REPOSITORY`,
+  `IMAGE_TAG`, `DOCKERFILE_PATH`, and `BUILD_CONTEXT`.
+- **FR-034**: The hidden `.build` template MUST support optional `BUILD_ARGS`
+  as a plain string and optional `BUILD_PLATFORMS` for `buildx`.
+- **FR-035**: The generated build pipeline file MUST NOT render concrete
+  jobs such as `build` or any `extends` consumers, and it MUST keep job-level
+  `needs`, `variables`, `rules`, hooks, and deploy behavior consumer-managed.
+- **FR-036**: The generated build pipeline MR description MUST tell the
+  operator to manually include `ci-pipelines/build.gitlab-ci.yml` from
+  root `.gitlab-ci.yml` or `.gitlab-ci.yaml`.
+- **FR-037**: Terraform MUST generate
+  `ci-pipelines/deploy.gitlab-ci.yml` for every managed project that opts into
+  reusable deploy pipelines through the reusable CI pipeline submodule.
+- **FR-038**: The generated deploy pipeline file MUST include one hidden
+  `.deploy` job.
+- **FR-039**: The hidden `.deploy` template MUST render `stage: deploy` and a
+  Kubernetes-and-Helm capable image by default, while allowing the image block
+  to be overridden.
+- **FR-040**: Concrete service jobs MUST consume the generated hidden deploy
+  template through `extends: .deploy` and configure deploy behavior through CI
+  variables.
+- **FR-041**: The hidden `.deploy` template MUST support Kubernetes context
+  selection through `KUBE_CONTEXT` and optional AWS EKS kubeconfig generation
+  through `AWS_EKS_CLUSTER_NAME` plus `AWS_REGION`.
+- **FR-042**: The hidden `.deploy` template MUST support Helm deployment
+  inputs for `KUBE_NAMESPACE`, `HELM_RELEASE`, `HELM_CHART`,
+  optional `HELM_CHART_VERSION`, optional `HELM_VALUES_ARGS`,
+  optional `HELM_SET_ARGS`, and optional `HELM_EXTRA_ARGS`.
+- **FR-043**: The hidden `.deploy` template MUST support optional image tag
+  propagation through `DEPLOY_IMAGE_REPOSITORY`, `DEPLOY_IMAGE_TAG`,
+  `HELM_IMAGE_REPOSITORY_SET_PATH`, and `HELM_IMAGE_TAG_SET_PATH`.
+- **FR-044**: The generated deploy pipeline MR description MUST tell the
+  operator to manually include `ci-pipelines/deploy.gitlab-ci.yml` from
+  root `.gitlab-ci.yml` or `.gitlab-ci.yaml`.
 
 ### Key Entities *(include if feature involves data or object schemas)*
 
@@ -270,6 +393,12 @@ project.
   `.gitlab/agents/<agent-name>/config.yaml` stored in the central dynamic
   environments project by default, containing input-driven CI access and user
   access authorization.
+- **Build Deploy Pipeline**: Optional per-project reusable CI pipeline
+  configuration that renders a hidden `.build` template into
+  `ci-pipelines/build.gitlab-ci.yml`.
+- **Deploy Pipeline**: Optional per-project reusable CI pipeline
+  configuration that renders a hidden `.deploy` template into
+  `ci-pipelines/deploy.gitlab-ci.yml`.
 
 ## Success Criteria *(mandatory)*
 

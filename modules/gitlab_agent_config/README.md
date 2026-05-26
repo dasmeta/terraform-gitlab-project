@@ -5,7 +5,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | >= 18.8.2 |
+| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | = 18.8.2 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.17.0 |
 | <a name="requirement_null"></a> [null](#requirement\_null) | >= 3.2.0 |
 
@@ -13,7 +13,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | >= 18.8.2 |
+| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | = 18.8.2 |
 | <a name="provider_helm"></a> [helm](#provider\_helm) | >= 2.17.0 |
 | <a name="provider_null"></a> [null](#provider\_null) | >= 3.2.0 |
 
@@ -25,10 +25,10 @@ No modules.
 
 | Name | Type |
 |------|------|
-| [gitlab_branch.this](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/branch) | resource |
-| [gitlab_cluster_agent.this](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/cluster_agent) | resource |
-| [gitlab_cluster_agent_token.this](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/cluster_agent_token) | resource |
-| [gitlab_repository_file.this](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/repository_file) | resource |
+| [gitlab_branch.this](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/branch) | resource |
+| [gitlab_cluster_agent.this](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/cluster_agent) | resource |
+| [gitlab_cluster_agent_token.this](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/cluster_agent_token) | resource |
+| [gitlab_repository_file.this](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/repository_file) | resource |
 | [helm_release.gitlab_agent](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [null_resource.merge_request](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 

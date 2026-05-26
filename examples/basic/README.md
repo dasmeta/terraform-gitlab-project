@@ -16,6 +16,14 @@ This example demonstrates the supported multi-group workflow:
   into the current Kubernetes cluster context
 - `gitlab_projects[].dynamic_environment.enabled = true` can opt a service
   repository into a generated reusable CI trigger file and merge request
+- service repositories can opt into a reusable build entrypoint through
+  `build_pipeline`, which generates `ci-pipelines/build.gitlab-ci.yml`
+  through the `modules/gitlab_ci_pipelines` submodule and exposes one hidden
+  `.build` template for `include` + `extends`
+- service repositories can opt into a reusable Helm deploy entrypoint through
+  `deploy_pipeline`, which generates `ci-pipelines/deploy.gitlab-ci.yml`
+  through the same submodule and exposes one hidden `.deploy` template for
+  `include` + `extends`
 - field-level defaults and behavioral notes are documented inline in the root
   `variables.tf` schema rather than in a detached shared prose block
 
@@ -27,6 +35,15 @@ Dynamic environment merge request creation uses the GitLab API from Terraform's
 local execution environment because the GitLab Terraform provider does not
 currently expose a merge-request creation resource. Set `GITLAB_TOKEN` or
 `GITLAB_API_TOKEN` before `terraform apply` when this feature is enabled.
+
+Build pipeline merge request creation uses the same local GitLab API
+pattern. The generated MR tells operators to include
+`ci-pipelines/build.gitlab-ci.yml` from the root `.gitlab-ci.yml`
+manually; the root CI file is not edited by Terraform.
+
+Deploy pipeline merge request creation uses the same pattern. The generated MR
+tells operators to include `ci-pipelines/deploy.gitlab-ci.yml` manually; the
+root CI file is not edited by Terraform.
 
 GitLab Agent installation uses the Helm provider and the local kubeconfig by
 default. For EKS, connect the local kubeconfig before applying:
@@ -43,48 +60,12 @@ current kubeconfig context. When `gitlab_agent.register_agent` and
 Agent token and stores it in Terraform state so Helm can use it as
 `config.token`.
 
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-|------|---------|
-| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | >= 18.8.2 |
-| <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.17.0 |
-| <a name="requirement_null"></a> [null](#requirement\_null) | >= 3.2.0 |
-
-## Providers
-
-No providers.
-
-## Modules
-
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_gitlab"></a> [gitlab](#module\_gitlab) | ../.. | n/a |
-
-## Resources
-
-No resources.
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_kubeconfig_context"></a> [kubeconfig\_context](#input\_kubeconfig\_context) | Optional kubeconfig context used by the Helm provider. Leave null to use the current context. | `string` | `null` | no |
-| <a name="input_kubeconfig_path"></a> [kubeconfig\_path](#input\_kubeconfig\_path) | Kubeconfig path used by the Helm provider to install the GitLab Agent chart. | `string` | `"~/.kube/config"` | no |
-
-## Outputs
-
-| Name | Description |
-|------|-------------|
-| <a name="output_gitlab"></a> [gitlab](#output\_gitlab) | All outputs from the terraform-gitlab-project module (gitlab\_group\_ids, gitlab\_project\_ids, …). |
-<!-- END_TF_DOCS -->
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | >= 18.8.2 |
+| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | = 18.8.2 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.17.0 |
 | <a name="requirement_null"></a> [null](#requirement\_null) | >= 3.2.0 |
 

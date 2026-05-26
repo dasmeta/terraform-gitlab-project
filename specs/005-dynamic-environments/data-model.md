@@ -109,6 +109,58 @@ Validation:
 - `ci_file_path` must be non-empty when enabled.
 - The generated MR target branch is the service project's default branch.
 
+## Build Deploy Pipeline Configuration
+
+Represents optional per-project reusable application pipeline generation for
+`ci-pipelines/build.gitlab-ci.yml`.
+
+Fields:
+
+- `tags`: optional runner tags rendered on the hidden `.build` template. Defaults to
+  no tags.
+- `build_image`: optional `.build` image block with `name` and `entrypoint`.
+- `build_services`: optional `.build` service blocks with `name`, `entrypoint`,
+  and `command`.
+- runtime build behavior is controlled by consumer CI variables such as
+  `BUILD_MODE`, `REGISTRY_PROVIDER`, `IMAGE_REPOSITORY`, `IMAGE_TAG`,
+  `DOCKERFILE_PATH`, `BUILD_CONTEXT`, optional `BUILD_ARGS`, optional
+  `BUILD_PLATFORMS`, and optional hook variables such as `BUILD_PRE_SCRIPT`,
+  `BUILD_SETUP_SCRIPT`, and `BUILD_COMMAND`.
+
+Validation:
+
+- When `build_pipeline` is set, only a hidden `.build` template is
+  rendered.
+- `.build` renders `stage: build`, default `amazon/aws-cli` image with empty
+  entrypoint, and default `docker:dind` service with Docker TLS disabled unless
+  overridden.
+- Concrete jobs, global `stages`, global `variables`, `needs`, `rules`, and
+  deploy behavior are not rendered by this generated file.
+
+## Deploy Pipeline Configuration
+
+Represents optional per-project reusable Helm deploy pipeline generation for
+`ci-pipelines/deploy.gitlab-ci.yml`.
+
+Fields:
+
+- `tags`: optional runner tags rendered on the hidden `.deploy` template.
+- `deploy_image`: optional `.deploy` image block with `name` and `entrypoint`.
+- runtime deploy behavior is controlled by consumer CI variables such as
+  `KUBE_CONTEXT`, `AWS_EKS_CLUSTER_NAME`, `AWS_REGION`, `KUBE_NAMESPACE`,
+  `HELM_RELEASE`, `HELM_CHART`, optional `HELM_CHART_VERSION`,
+  `HELM_VALUES_ARGS`, `HELM_SET_ARGS`, `HELM_EXTRA_ARGS`,
+  `DEPLOY_IMAGE_REPOSITORY`, `DEPLOY_IMAGE_TAG`,
+  `HELM_IMAGE_REPOSITORY_SET_PATH`, and `HELM_IMAGE_TAG_SET_PATH`.
+
+Validation:
+
+- When `deploy_pipeline` is set, only a hidden `.deploy` template is rendered.
+- `.deploy` renders `stage: deploy` with a Kubernetes-and-Helm capable image by
+  default, while allowing the image block to be overridden.
+- Concrete jobs, global `stages`, global `variables`, and consumer-specific
+  deploy `rules` are not rendered by this generated file.
+
 ## Generated Repository File
 
 Represents a Terraform-managed repository file on
@@ -125,7 +177,7 @@ Fields:
 Validation:
 
 - File resources are created only for enabled central or enabled service
-  configurations.
+  configurations, and for required build or deploy pipeline configurations.
 
 ## Generated Merge Request
 

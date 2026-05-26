@@ -46,6 +46,17 @@ module "dynamic_environment" {
   gitlab_agent_path            = local.dynamic_environment_gitlab_agent_path
 }
 
+module "gitlab_ci_pipelines" {
+  source = "./modules/gitlab_ci_pipelines"
+  # Reusable project CI templates are separated from project lifecycle and
+  # dynamic environment orchestration so future pipelines can be added here.
+
+  projects_enabled = local.effective_projects_enabled
+  gitlab_projects  = local.gitlab_projects_resolved
+  project_ids      = module.project.project_ids
+  gitlab_api_url   = try(var.dynamic_environments_project.gitlab_api_url, "https://gitlab.com/api/v4")
+}
+
 module "gitlab_agent_config" {
   source = "./modules/gitlab_agent_config"
   # GitLab Agent config belongs to the dynamic environments project by default,

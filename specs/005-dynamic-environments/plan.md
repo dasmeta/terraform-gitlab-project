@@ -27,6 +27,17 @@ dynamic environment submodule consumes only the effective `GITLAB_AGENT_PATH`;
 generated CI can keep the AWS EKS kubeconfig flow or switch to the GitLab Agent kube context with
 `deploy_mode = "gitlab_agent"`.
 
+DMVP-1150 adds reusable GitLab application pipeline generation through a
+dedicated `modules/gitlab_ci_pipelines` submodule. The first supported template
+is `ci-pipelines/build.gitlab-ci.yml`, generated for each managed
+`gitlab_projects[]` entry that defines `build_pipeline`.
+This submodule owns reusable pipeline files and merge requests so future
+pipeline templates can be added without mixing CI generation into project
+lifecycle or dynamic environment orchestration modules.
+It now also supports `ci-pipelines/deploy.gitlab-ci.yml` for each managed
+`gitlab_projects[]` entry that defines `deploy_pipeline`, with Helm deploy
+logic exposed through a hidden `.deploy` template.
+
 ## Technical Context
 
 **Terraform Runtime**: Terraform `>= 1.3`  
@@ -52,8 +63,9 @@ generated CI can keep the AWS EKS kubeconfig flow or switch to the GitLab Agent 
   breaking change is approved or planned.
 - File coverage check: update `variables.tf`, `locals.tf`, `main.tf`,
   `outputs.tf`, `modules/project/main.tf`, `modules/project/locals.tf`,
-  `modules/project/outputs.tf`, `modules/dynamic_environment/*`, `README.md`,
-  `examples/basic/main.tf`, and generated documentation as needed.
+  `modules/project/outputs.tf`, `modules/dynamic_environment/*`,
+  `modules/gitlab_ci_pipelines/*`, `README.md`, `examples/basic/main.tf`, and
+  generated documentation as needed.
 - Provider/version check: `gitlabhq/gitlab >= 18.8.2` supports project,
   branch, and repository file resources. Local provider inspection showed no
   merge-request creation resource, only merge-request data sources and notes.
@@ -91,6 +103,11 @@ specs/005-dynamic-environments/
 │   ├── locals.tf
 │   ├── main.tf
 │   └── outputs.tf
+├── modules/gitlab_ci_pipelines/
+│   ├── locals.tf
+│   ├── main.tf
+│   ├── outputs.tf
+│   └── variables.tf
 ├── README.md
 ├── examples/
 └── tests/
@@ -103,6 +120,12 @@ consumer input definitions, normalization, and high-level outputs at the root.
 Represent generated file content with Terraform locals so repository-file
 resources can consume deterministic strings.
 
+Reusable application CI pipeline generation belongs in
+`modules/gitlab_ci_pipelines`, not `modules/dynamic_environment`, because
+build pipeline files are reusable service-repository CI entrypoints and
+are not owned by dynamic environment opt-in. They render only hidden templates;
+concrete jobs and dynamic environment metadata stay in consumer-owned CI.
+
 ## Complexity Tracking
 
 > **Fill only if the Constitution Check reveals a justified exception**
@@ -111,4 +134,5 @@ resources can consume deterministic strings.
 |-----------|------------|--------------------------------------------------|
 | Interface widening | Adds central dynamic environment orchestration and per-service trigger opt-in inputs | Approved during DMVP-10007 refinement; a narrower documentation-only change would not create the requested GitLab MR automation |
 | Interface widening | Adds optional GitLab Agent config generation, registration, and Helm install under the dynamic environments object | Approved during DMVP-10061 follow-up; registration/install are disabled by default and documented as storing the sensitive generated token in Terraform state |
+| Interface widening | Adds optional per-project `build_pipeline`, `deploy_pipeline`, and generated reusable CI pipeline MRs | Rollout-safe interpretation of reusable service CI generation; projects opt in by enabling the hidden template files they need |
 | Imperative MR creation | GitLab provider does not expose a merge-request creation resource | Approved after provider inspection; `local-exec` GitLab API call keeps branch/file resources declarative while satisfying MR creation requirement |

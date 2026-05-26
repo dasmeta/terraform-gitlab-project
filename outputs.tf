@@ -28,6 +28,26 @@ output "dynamic_environment_service_ci_file_paths" {
   value       = module.dynamic_environment.service_ci_file_paths
 }
 
+output "gitlab_ci_build_pipeline_file_paths" {
+  description = "Map of service project name to generated reusable build CI file path."
+  value       = module.gitlab_ci_pipelines.build_pipeline_ci_file_paths
+}
+
+output "gitlab_ci_build_pipeline_source_branches" {
+  description = "Map of service project name to generated reusable build CI source branch."
+  value       = module.gitlab_ci_pipelines.build_pipeline_source_branches
+}
+
+output "gitlab_ci_deploy_pipeline_file_paths" {
+  description = "Map of service project name to generated reusable deploy CI file path."
+  value       = module.gitlab_ci_pipelines.deploy_pipeline_ci_file_paths
+}
+
+output "gitlab_ci_deploy_pipeline_source_branches" {
+  description = "Map of service project name to generated reusable deploy CI source branch."
+  value       = module.gitlab_ci_pipelines.deploy_pipeline_source_branches
+}
+
 output "dynamic_environment_gitlab_agent_path" {
   description = "GitLab Agent context path referenced by generated dynamic environment CI."
   value       = module.dynamic_environment.gitlab_agent_path

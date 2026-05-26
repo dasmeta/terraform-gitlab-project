@@ -1,0 +1,81 @@
+.build:
+  stage: build
+%{ if length(tags) > 0 ~}
+  tags:
+%{ for tag in tags ~}
+    - ${tag}
+%{ endfor ~}
+%{ endif ~}
+  image:
+    name: ${build_image.name}
+    entrypoint: ${jsonencode(build_image.entrypoint)}
+%{ if length(build_services) > 0 ~}
+  services:
+%{ for service in build_services ~}
+    - name: ${service.name}
+%{ if try(service.entrypoint, null) != null ~}
+      entrypoint: ${jsonencode(service.entrypoint)}
+%{ endif ~}
+%{ if try(service.command, null) != null ~}
+      command: ${jsonencode(service.command)}
+%{ endif ~}
+%{ endfor ~}
+%{ endif ~}
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - yum install -y docker
+    - aws --version
+    - docker --version
+  script:
+    - |
+      set -eu
+      : "$${BUILD_MODE:?BUILD_MODE must be set to docker or buildx}"
+      : "$${REGISTRY_PROVIDER:?REGISTRY_PROVIDER must be set to ecr or dockerhub}"
+
+      IMAGE_REPOSITORY_EFFECTIVE="$${IMAGE_REPOSITORY:-$${CI_APPLICATION_REPOSITORY:-}}"
+      IMAGE_TAG_EFFECTIVE="$${IMAGE_TAG:-$${CI_APPLICATION_TAG:-}}"
+      DOCKERFILE_PATH_EFFECTIVE="$${DOCKERFILE_PATH:-Dockerfile}"
+      BUILD_CONTEXT_EFFECTIVE="$${BUILD_CONTEXT:-.}"
+
+      : "$${IMAGE_REPOSITORY_EFFECTIVE:?IMAGE_REPOSITORY or CI_APPLICATION_REPOSITORY must be set}"
+      : "$${IMAGE_TAG_EFFECTIVE:?IMAGE_TAG or CI_APPLICATION_TAG must be set}"
+      IMAGE_REF="$${IMAGE_REPOSITORY_EFFECTIVE}:$${IMAGE_TAG_EFFECTIVE}"
+
+      case "$${REGISTRY_PROVIDER}" in
+        ecr)
+          : "$${AWS_REGION:?AWS_REGION must be set for REGISTRY_PROVIDER=ecr}"
+          echo "Logging in to AWS ECR"
+          aws ecr get-login-password --region "$${AWS_REGION}" | docker login --username AWS --password-stdin "$${IMAGE_REPOSITORY_EFFECTIVE%%/*}"
+          ;;
+        dockerhub)
+          : "$${DOCKERHUB_USERNAME:?DOCKERHUB_USERNAME must be set for REGISTRY_PROVIDER=dockerhub}"
+          : "$${DOCKERHUB_TOKEN:?DOCKERHUB_TOKEN must be set for REGISTRY_PROVIDER=dockerhub}"
+          echo "Logging in to DockerHub"
+          docker login -u "$${DOCKERHUB_USERNAME}" -p "$${DOCKERHUB_TOKEN}" "$${DOCKERHUB_REGISTRY:-docker.io}"
+          ;;
+        *)
+          echo "Unsupported REGISTRY_PROVIDER: $${REGISTRY_PROVIDER}" >&2
+          exit 1
+          ;;
+      esac
+
+      case "$${BUILD_MODE}" in
+        docker)
+          echo "Build Docker image with docker"
+          eval "docker build $${BUILD_ARGS:-} -f \"$${DOCKERFILE_PATH_EFFECTIVE}\" -t \"$${IMAGE_REF}\" \"$${BUILD_CONTEXT_EFFECTIVE}\""
+          docker push "$${IMAGE_REF}"
+          ;;
+        buildx)
+          : "$${BUILD_PLATFORMS:?BUILD_PLATFORMS must be set when BUILD_MODE=buildx}"
+          echo "Build Docker image with buildx"
+          docker buildx create --use --name buildx-builder >/dev/null 2>&1 || docker buildx use buildx-builder
+          eval "docker buildx build $${BUILD_ARGS:-} -f \"$${DOCKERFILE_PATH_EFFECTIVE}\" -t \"$${IMAGE_REF}\" \"$${BUILD_CONTEXT_EFFECTIVE}\" --platform \"$${BUILD_PLATFORMS}\" --push"
+          ;;
+        *)
+          echo "Unsupported BUILD_MODE: $${BUILD_MODE}" >&2
+          exit 1
+          ;;
+      esac
