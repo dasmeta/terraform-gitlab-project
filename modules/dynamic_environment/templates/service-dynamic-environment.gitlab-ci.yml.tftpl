@@ -1,0 +1,49 @@
+trigger_dynamic_environment:
+  stage: ${stage}
+  needs:
+%{ for need in needs ~}
+    - ${need}
+%{ endfor ~}
+  trigger:
+    project: ${dynamic_environments_project_path}
+    branch: ${dynamic_environments_default_branch}
+    strategy: depend
+  resource_group: "dynamic-${name}-mr-$CI_MERGE_REQUEST_IID"
+  environment:
+    name: review/${name}-mr-$CI_MERGE_REQUEST_IID
+    url: https://${name}-mr-$CI_MERGE_REQUEST_IID.${dynamic_base_domain}
+    on_stop: stop_review_app
+    kubernetes:
+      agent: ${dynamic_environments_agent_path}
+      dashboard:
+        namespace: dynamic-${name}-mr-$CI_MERGE_REQUEST_IID
+  variables:
+    SOURCE_ENVIRONMENT: ${source_environment}
+    DYNAMIC_REF: $CI_COMMIT_REF_NAME
+    TRIGGER_PROJECT_PATH: $CI_PROJECT_PATH
+    TRIGGER_IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+    DYNAMIC_NAMESPACE: dynamic-${name}-mr-$CI_MERGE_REQUEST_IID
+    DYNAMIC_ENV_HOST: mr-$CI_MERGE_REQUEST_IID.${dynamic_base_domain}
+    DYNAMIC_ENV_RELEASE: ${dynamic_env_release}
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+stop_review_app:
+  stage: ${cleanup_stage}
+  trigger:
+    project: ${dynamic_environments_project_path}
+    branch: ${dynamic_environments_default_branch}
+    strategy: depend
+  variables:
+    REMOVE_DYNAMIC: "true"
+    DYNAMIC_NAMESPACE: dynamic-${name}-mr-$CI_MERGE_REQUEST_IID
+  environment:
+    name: review/${name}-mr-$CI_MERGE_REQUEST_IID
+    action: stop
+    kubernetes:
+      agent: ${dynamic_environments_agent_path}
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+    - if: $CI_MERGE_REQUEST_ID
+      when: manual

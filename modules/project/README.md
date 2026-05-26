@@ -5,13 +5,13 @@
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | >= 18.8.2 |
+| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | = 18.8.2 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | >= 18.8.2 |
+| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | = 18.8.2 |
 
 ## Modules
 
@@ -21,9 +21,9 @@ No modules.
 
 | Name | Type |
 |------|------|
-| [gitlab_branch_protection.branch](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/branch_protection) | resource |
-| [gitlab_project.this](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/project) | resource |
-| [gitlab_project_approval_rule.this](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/project_approval_rule) | resource |
+| [gitlab_branch_protection.branch](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/branch_protection) | resource |
+| [gitlab_project.this](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/project) | resource |
+| [gitlab_project_approval_rule.this](https://registry.terraform.io/providers/gitlabhq/gitlab/18.8.2/docs/resources/project_approval_rule) | resource |
 
 ## Inputs
 

@@ -1,0 +1,93 @@
+%{ if length(defaults) > 0 ~}
+defaults:
+%{ if try(defaults.aws_region, null) != null ~}
+  aws_region: ${defaults.aws_region}
+%{ endif ~}
+%{ if try(defaults.secret_env, null) != null ~}
+  secret_env: ${defaults.secret_env}
+%{ endif ~}
+%{ if try(defaults.base_ref, null) != null ~}
+  base_ref: ${defaults.base_ref}
+%{ endif ~}
+%{ if try(length(defaults.base_ref_fallbacks), 0) > 0 ~}
+  base_ref_fallbacks:
+%{ for ref in defaults.base_ref_fallbacks ~}
+    - ${ref}
+%{ endfor ~}
+%{ endif ~}
+%{ if try(defaults.helm_chart, null) != null ~}
+  helm_chart: ${defaults.helm_chart}
+%{ endif ~}
+%{ if try(defaults.helm_timeout, null) != null ~}
+  helm_timeout: ${defaults.helm_timeout}
+%{ endif ~}
+%{ if try(defaults.dynamic_base_domain, null) != null ~}
+  dynamic_base_domain: ${defaults.dynamic_base_domain}
+%{ endif ~}
+%{ if try(defaults.dynamic_env_release, null) != null ~}
+  dynamic_env_release: ${defaults.dynamic_env_release}
+%{ endif ~}
+%{ endif ~}
+%{ if length(defaults) > 0 && (length(infra_deployments) > 0 || length(deployments) > 0) ~}
+
+%{ endif ~}
+%{ if length(infra_deployments) > 0 ~}
+infra_deployments:
+%{ for dep_index, dep in infra_deployments ~}
+  - release: ${dep.release}
+%{ if try(dep.repo_name, null) != null ~}
+    repo_name: ${dep.repo_name}
+%{ endif ~}
+%{ if try(dep.repo_url, null) != null ~}
+    repo_url: ${dep.repo_url}
+%{ endif ~}
+    chart: ${dep.chart}
+    version: ${dep.version}
+%{ if try(length(dep.values), 0) > 0 ~}
+    values:
+${replace(format("      %s", replace(replace(trimspace(yamlencode(dep.values)), "/\"([A-Za-z0-9_-]+)\":/", "$1:"), "/: \"([A-Za-z0-9_.\\-\\/]+)\"/", ": $1")), "\n", "\n      ")}
+%{ endif ~}
+%{ if dep_index < length(infra_deployments) - 1 ~}
+
+%{ endif ~}
+%{ endfor ~}
+%{ endif ~}
+%{ if length(infra_deployments) > 0 && length(deployments) > 0 ~}
+
+%{ endif ~}
+%{ if length(deployments) > 0 ~}
+deployments:
+%{ for deployment_index, deployment in deployments ~}
+  - app_component: ${deployment.app_component}
+%{ if try(deployment.db_migration, null) != null ~}
+    db_migration: ${deployment.db_migration}
+%{ endif ~}
+%{ if try(length(deployment.helm_overrides), 0) > 0 ~}
+    helm_overrides:
+%{ for override in deployment.helm_overrides ~}
+      - ${trimspace(yamlencode(override))}
+%{ endfor ~}
+%{ endif ~}
+    helm_release: ${deployment.helm_release}
+    helm_version: ${deployment.helm_version}
+    project: ${deployment.project}
+%{ if try(deployment.set_build_version, null) != null ~}
+    set_build_version: ${deployment.set_build_version}
+%{ endif ~}
+%{ if try(deployment.base_ref, null) != null ~}
+    base_ref: ${deployment.base_ref}
+%{ endif ~}
+%{ if try(length(deployment.base_ref_fallbacks), 0) > 0 ~}
+    base_ref_fallbacks:
+%{ for ref in deployment.base_ref_fallbacks ~}
+      - ${ref}
+%{ endfor ~}
+%{ endif ~}
+%{ if try(deployment.source_environment, null) != null ~}
+    source_environment: ${deployment.source_environment}
+%{ endif ~}
+%{ if deployment_index < length(deployments) - 1 ~}
+
+%{ endif ~}
+%{ endfor ~}
+%{ endif ~}
