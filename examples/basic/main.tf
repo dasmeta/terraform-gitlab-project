@@ -50,12 +50,19 @@ module "gitlab" {
 
   gitlab_projects = [
     {
-      name                   = "service-one"
-      group_key              = "first_group"
-      description            = "Single project in first_group"
-      default_branch         = "main"
-      visibility_level       = "private"
-      initialize_with_readme = true
+      name                    = "service-one"
+      group_key               = "first_group"
+      description             = "Single project in first_group"
+      default_branch          = "main"
+      visibility_level        = "private"
+      initialize_with_readme  = true
+      merge_requests_template = <<-EOT
+        ## Story
+
+        ## Dependencies added/updated
+
+        ## Changes
+      EOT
     },
     {
       name                   = "service-two"

@@ -4,6 +4,8 @@ This example demonstrates the supported multi-group workflow:
 
 - each project resolves its namespace through an explicit `group_key`
 - each group is in managed-group mode with `create = true`
+- one project sets `merge_requests_template` so merge request defaults are
+  managed from Terraform
 - project-level `env_variables` can replace a shared variable definition by
   reusing the same key
 - field-level defaults and behavioral notes are documented inline in the root

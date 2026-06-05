@@ -85,6 +85,7 @@ variable "gitlab_projects" {
     suggestion_commit_message                        = optional(string)               # Suggested squash commit message template
     merge_commit_template                            = optional(string)               # Merge commit message template
     squash_commit_template                           = optional(string)               # Squash commit message template
+    merge_requests_template                          = optional(string)               # Default merge request description template
     resolve_outdated_diff_discussions                = optional(bool)                 # Automatically resolve outdated diff discussions
     branch_protections_enabled                       = optional(bool, true)           # Create branch protection resources for this project
     branch_protections = optional(list(object({
@@ -149,6 +150,9 @@ variable "gitlab_projects" {
 
     ci_pipeline_variables_minimum_override_role — CI/CD → Variables: minimum role that may run a new pipeline with pipeline variables (GitLab 17.1+).
     Valid values: no_one_allowed, developer, maintainer, owner. Default in type: maintainer.
+
+    merge_requests_template — Merge requests: default description template for new merge requests in the project.
+    Omit this field to leave the project setting unmanaged by this module.
 
     approval_rule — Optional per project. Accepts a list of approval rule objects.
     If present and non-empty, the module creates one GitLab approval rule resource
