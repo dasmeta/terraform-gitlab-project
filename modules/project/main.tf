@@ -31,6 +31,7 @@ resource "gitlab_project" "this" {
   suggestion_commit_message = try(each.value.suggestion_commit_message, null)
   merge_commit_template     = try(each.value.merge_commit_template, null)
   squash_commit_template    = try(each.value.squash_commit_template, null)
+  merge_requests_template   = try(each.value.merge_requests_template, null)
 
   resolve_outdated_diff_discussions = try(each.value.resolve_outdated_diff_discussions, null)
 
