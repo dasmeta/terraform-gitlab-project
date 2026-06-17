@@ -20,7 +20,7 @@ implicit single-group fallback described in the root README.
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | >= 18.8.2 |
+| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | ~> 19.0 |
 
 ## Providers
 

@@ -37,22 +37,21 @@ and mirrors current optional template mappings.
   existing child-module guidance says validation and normalization happen at
   the root.
 
-## Decision: Keep provider constraints unchanged unless validation fails
+## Decision: Use the GitLab provider 19.x major range
 
-**Decision**: Keep `gitlabhq/gitlab >= 18.8.2` and Terraform `>= 1.3`
-  unchanged.
+**Decision**: Use `gitlabhq/gitlab ~> 19.0` and Terraform `>= 1.3`.
 
-**Rationale**: The repository already targets a current GitLab provider version
-and uses optional object attributes. This field is a direct project resource
-argument and does not require a broader provider upgrade from the available
-repository context. The Terraform Registry documentation for
-`gitlabhq/gitlab` lists `merge_requests_template` on `gitlab_project` as the
-project setting for new merge request templates.
+**Rationale**: The module should start at GitLab provider 19.0.0 and accept
+future 19.x minor and patch releases such as 19.1.0, 19.1.1, and 19.2.0 without
+automatically crossing into the next major version. `~> 19.0` is the compact
+Terraform constraint syntax for that 19.x range. The Terraform Registry
+documentation for `gitlabhq/gitlab` lists `merge_requests_template` on
+`gitlab_project` as the project setting for new merge request templates.
 
 **Alternatives considered**:
 
-- Raise the provider version proactively. Rejected because no evidence shows the
-  current constraint is insufficient.
+- Use only `>= 19.0.0`. Rejected because it would also allow a future 20.x
+  provider release, which may include breaking changes.
 
 ## Decision: Use example validation rather than a new test harness
 

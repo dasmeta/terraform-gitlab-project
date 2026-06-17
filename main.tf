@@ -33,3 +33,12 @@ module "ci_env_variables" {
   global_env_variables = var.global_env_variables
   project_ids          = module.project.project_ids
 }
+
+module "gitlab_ci_pipelines" {
+  source = "./modules/gitlab_ci_pipelines"
+  # Pipeline files are opt-in per project and are written into the managed
+  # repository as reusable include wrappers.
+
+  gitlab_projects = local.gitlab_projects_for_children
+  project_ids     = module.project.project_ids
+}

@@ -8,7 +8,7 @@ terraform {
   required_providers {
     gitlab = {
       source  = "gitlabhq/gitlab"
-      version = ">= 18.8.2"
+      version = "~> 19.0"
     }
   }
 }
@@ -25,37 +25,51 @@ module "gitlab" {
   global_env_variables = [
     { key = "GLOBAL_CI_TOKEN", value = "replace-with-shared-ci-token", masked = false },
     { key = "GLOBAL_LOG_LEVEL", value = "info" },
+    { key = "AWS_REGION", value = "eu-central-1" }, # Replaces the previous definition with the same key
   ]
 
   gitlab_groups = [
     {
       key              = "first_group"
       create           = true
-      name             = "First Group"
-      path             = "example-team-a-tf"
+      name             = "First TEST Group"
+      path             = "first-test-group-tf"
       description      = "First group — one repo in this example"
-      parent_id        = null # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
+      parent_id        = 129092988 # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
       visibility_level = "private"
     },
     {
       key              = "second_group"
       create           = true
-      name             = "Second Group"
-      path             = "example-team-b-tf"
+      name             = "Second TEST Group"
+      path             = "second-test-group-tf"
       description      = "Second group — two repos in this example"
-      parent_id        = null # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
+      parent_id        = 129092988 # Optional parent group/namespace for GitLab.com; set to null or omit for top-level groups or self-managed instances.
       visibility_level = "private"
     },
   ]
 
   gitlab_projects = [
     {
-      name                    = "service-one"
-      group_key               = "first_group"
-      description             = "Single project in first_group"
-      default_branch          = "main"
-      visibility_level        = "private"
-      initialize_with_readme  = true
+      name                                  = "service-one"
+      group_key                             = "first_group"
+      description                           = "Single project in first_group"
+      default_branch                        = "main"
+      visibility_level                      = "private"
+      initialize_with_readme                = true
+      only_allow_merge_if_pipeline_succeeds = false
+      gitlab_ci_pipelines = [
+        {
+          type = "build_ecr"
+          variables = {
+            aws_region       = "eu-central-1"
+            image_repository = "565580475168.dkr.ecr.eu-central-1.amazonaws.com/vazgen-test"
+            image_tag        = "$CI_COMMIT_SHORT_SHA"
+            dockerfile_path  = "Dockerfile"
+            build_context    = "."
+          }
+        }
+      ]
       merge_requests_template = <<-EOT
         ## Story
 
@@ -65,20 +79,22 @@ module "gitlab" {
       EOT
     },
     {
-      name                   = "service-two"
-      group_key              = "second_group"
-      description            = "First project in second_group"
-      default_branch         = "main"
-      visibility_level       = "private"
-      initialize_with_readme = true
+      name                                  = "service-two"
+      group_key                             = "second_group"
+      description                           = "First project in second_group"
+      default_branch                        = "main"
+      visibility_level                      = "private"
+      initialize_with_readme                = true
+      only_allow_merge_if_pipeline_succeeds = false
     },
     {
-      name                   = "service-three"
-      group_key              = "second_group"
-      description            = "Second project in second_group"
-      default_branch         = "main"
-      visibility_level       = "private"
-      initialize_with_readme = true
+      name                                  = "service-three"
+      group_key                             = "second_group"
+      description                           = "Second project in second_group"
+      default_branch                        = "main"
+      visibility_level                      = "private"
+      initialize_with_readme                = true
+      only_allow_merge_if_pipeline_succeeds = false
       branch_protections = [
         { branch = "main", allow_force_push = true, merge_access_level = "maintainer", push_access_level = "maintainer" },
       ]

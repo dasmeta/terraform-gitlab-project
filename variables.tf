@@ -110,6 +110,19 @@ variable "gitlab_projects" {
       masked    = optional(bool, false) # Hide value in logs / UI where supported
       protected = optional(bool, false) # Restrict variable to protected refs
     })), [])
+    gitlab_ci_pipelines = optional(list(object({
+      type                 = string               # Supported first version: build_ecr
+      create_merge_request = optional(bool, true) # Open a merge request instead of committing directly to the target branch
+      merge_request_title  = optional(string)     # Merge request title; defaults to the pipeline commit message
+      remove_source_branch = optional(bool, true) # Remove source branch after merge
+      commit_message       = optional(string)     # Commit message for the repository file change
+      file_path            = optional(string, "ci-pipelines/build-gitlab.ci.yaml")
+      job_name             = optional(string, "build")                        # Concrete job name extending the reusable .build template
+      template_project     = optional(string, "das-meta/gitlab-ci-templates") # Project containing reusable templates
+      template_ref         = optional(string, "DMVP-1150")                    # Template branch/tag/sha to include
+      template_file        = optional(string, "/ci-templates/templates/build/ecr-buildx.gitlab-ci.yml")
+      variables            = optional(map(string), {}) # Pipeline-type-specific variables in snake_case
+    })), [])
   }))
   description = <<-EOT
     List of GitLab project configurations.
@@ -137,7 +150,7 @@ variable "gitlab_projects" {
 
     branch_protections — Optional list per project: Settings → Repository → Protected branches.
     When omitted or set to [], this module creates one default protection for branch "main".
-    Access is only via merge_access_level / push_access_level (maintainer, developer, admin, no one).
+    Access is only via merge_access_level / push_access_level / unprotect_access_level (maintainer, developer, admin, no one).
     Granular "specific users/groups" rows from the GitLab UI are not supported by provider resource gitlab_branch_protection.
 
     approval_rule — Optional per project. Accepts a list of approval rule objects.
@@ -162,6 +175,11 @@ variable "gitlab_projects" {
 
     env_variables — Per-project CI/CD variables (gitlab_project_variable via module ci_env_variables), merged with
     var.global_env_variables; the same key on the project replaces the full global variable definition for that project.
+
+    gitlab_ci_pipelines — Optional per-project generated repository files under ci-pipelines/.
+    For type = "build_ecr", the module writes ci-pipelines/build-gitlab.ci.yaml with an include of
+    das-meta/gitlab-ci-templates and a concrete job that extends the reusable .build template while passing
+    ECR/buildx variables. build_ecr requires variables.aws_region and variables.image_repository.
   EOT
   validation {
     condition = alltrue([
@@ -192,6 +210,29 @@ variable "gitlab_projects" {
       try(p.group_key, null) == null || contains([for g in var.gitlab_groups : g.key], coalesce(try(p.group_key, null), "__UNRESOLVED_GROUP_KEY__"))
     ])
     error_message = "gitlab_projects[].group_key must match a declared gitlab_groups[].key."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for p in var.gitlab_projects : [
+        for pipeline in try(p.gitlab_ci_pipelines, []) :
+        contains(["build_ecr"], pipeline.type)
+      ]
+    ]))
+    error_message = "gitlab_projects[].gitlab_ci_pipelines[].type must be one of: build_ecr."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for p in var.gitlab_projects : [
+        for pipeline in try(p.gitlab_ci_pipelines, []) :
+        pipeline.type != "build_ecr" || (
+          contains(keys(try(pipeline.variables, {})), "aws_region") &&
+          contains(keys(try(pipeline.variables, {})), "image_repository")
+        )
+      ]
+    ]))
+    error_message = "gitlab_projects[].gitlab_ci_pipelines[] with type build_ecr must set variables.aws_region and variables.image_repository."
   }
 
   validation {

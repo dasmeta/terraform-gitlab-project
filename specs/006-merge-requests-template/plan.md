@@ -15,7 +15,7 @@ formatting and validation commands.
 ## Technical Context
 
 **Terraform Runtime**: `>= 1.3` from `versions.tf`  
-**Primary Provider Constraints**: `gitlabhq/gitlab >= 18.8.2` from `providers.tf`  
+**Primary Provider Constraints**: `gitlabhq/gitlab ~> 19.0` from `providers.tf`  
 **Module Scope**: root module input contract plus `modules/project` resource mapping and examples/docs  
 **Testing Strategy**: `terraform fmt -check -recursive`, `terraform validate`, and `terraform -chdir=examples/basic validate` after init is available  
 **Target Platform**: GitLab API via Terraform provider  
@@ -31,7 +31,7 @@ formatting and validation commands.
 - Wrapper check: Pass. `merge_requests_template` is a narrow optional field aligned with existing merge request and commit template settings rather than a broad upstream pass-through.
 - Approval check: Pass. No breaking change and no broad interface widening are planned.
 - File coverage check: Pass. Affected Terraform files, README, basic example, and Speckit evidence are listed.
-- Provider/version check: Pass. Existing `gitlabhq/gitlab >= 18.8.2` is expected to support the project argument; no version change is planned unless validation proves otherwise.
+- Provider/version check: Pass. Existing `gitlabhq/gitlab ~> 19.0` is expected to support the project argument and allow future 19.x minor/patch releases without crossing into 20.x.
 - Verification check: Pass. Planned commands are `terraform fmt -check -recursive`, `terraform init`, `terraform validate`, `terraform -chdir=examples/basic init`, and `terraform -chdir=examples/basic validate`.
 
 ## Project Structure
@@ -99,5 +99,5 @@ and [quickstart.md](quickstart.md).
 - Wrapper check: Pass. The new field is optional and does not expose unrelated provider options.
 - Approval check: Pass. No breaking change or broad interface widening was introduced during design.
 - File coverage check: Pass. Planned implementation tasks cover Terraform source, docs, examples, and Speckit evidence.
-- Provider/version check: Pass. No required provider version change identified.
+- Provider/version check: Pass. Provider constraint is pinned to the 19.x major range.
 - Verification check: Pass. Quickstart records the commands needed before completion.
