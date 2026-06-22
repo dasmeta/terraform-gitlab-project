@@ -38,6 +38,69 @@ locals {
         buildx_create_args = "BUILDX_CREATE_ARGS"
       }
     }
+
+    deploy_agent = {
+      file_path      = "ci-pipelines/deploy-gitlab.ci.yaml"
+      job_name       = "deploy"
+      extends        = ".deploy"
+      commit_message = "Add reusable deploy_agent GitLab CI pipeline"
+
+      include = {
+        project = "das-meta/gitlab-ci-templates"
+        ref     = "DMVP-1150"
+        file    = "/ci-templates/templates/deploy/agent-deploy.gitlab-ci.yml"
+      }
+
+      default_variables = {
+        KUBE_NAMESPACE_CREATE = "true"
+        HELM_WAIT             = "true"
+        HELM_TIMEOUT          = "40m"
+      }
+
+      variable_order = [
+        "DEPLOY_ENVIRONMENT_NAME",
+        "DEPLOY_ENVIRONMENT_KUBERNETES_AGENT",
+        "DEPLOY_ENVIRONMENT_DASHBOARD_NAMESPACE",
+        "KUBE_NAMESPACE",
+        "KUBE_NAMESPACE_CREATE",
+        "HELM_RELEASE",
+        "HELM_CHART",
+        "HELM_CHART_VERSION",
+        "HELM_REPOSITORY_NAME",
+        "HELM_REPOSITORY_URL",
+        "HELM_VALUES_ARGS",
+        "HELM_SET_ARGS",
+        "HELM_EXTRA_ARGS",
+        "DEPLOY_IMAGE_REPOSITORY",
+        "HELM_IMAGE_REPOSITORY_SET_PATH",
+        "DEPLOY_IMAGE_TAG",
+        "HELM_IMAGE_TAG_SET_PATH",
+        "HELM_WAIT",
+        "HELM_TIMEOUT",
+      ]
+
+      variable_keys = {
+        deploy_environment_name                = "DEPLOY_ENVIRONMENT_NAME"
+        deploy_environment_kubernetes_agent    = "DEPLOY_ENVIRONMENT_KUBERNETES_AGENT"
+        deploy_environment_dashboard_namespace = "DEPLOY_ENVIRONMENT_DASHBOARD_NAMESPACE"
+        kube_namespace                         = "KUBE_NAMESPACE"
+        kube_namespace_create                  = "KUBE_NAMESPACE_CREATE"
+        helm_release                           = "HELM_RELEASE"
+        helm_chart                             = "HELM_CHART"
+        helm_chart_version                     = "HELM_CHART_VERSION"
+        helm_repository_name                   = "HELM_REPOSITORY_NAME"
+        helm_repository_url                    = "HELM_REPOSITORY_URL"
+        helm_values_args                       = "HELM_VALUES_ARGS"
+        helm_set_args                          = "HELM_SET_ARGS"
+        helm_extra_args                        = "HELM_EXTRA_ARGS"
+        deploy_image_repository                = "DEPLOY_IMAGE_REPOSITORY"
+        helm_image_repository_set_path         = "HELM_IMAGE_REPOSITORY_SET_PATH"
+        deploy_image_tag                       = "DEPLOY_IMAGE_TAG"
+        helm_image_tag_set_path                = "HELM_IMAGE_TAG_SET_PATH"
+        helm_wait                              = "HELM_WAIT"
+        helm_timeout                           = "HELM_TIMEOUT"
+      }
+    }
   }
 
   normalized_ci_pipelines = flatten([
@@ -93,7 +156,7 @@ locals {
           - local: ${pipeline.file_path}
         ```
 
-        After that, GitLab will load the generated wrapper pipeline, which includes the shared reusable `.build` template and runs the generated `${pipeline.job_name}` job.
+        After that, GitLab will load the generated wrapper pipeline, which includes the shared reusable `${pipeline.config.extends}` template and runs the generated `${pipeline.job_name}` job.
       EOT
       remove_branch  = pipeline.remove_branch
       file_path      = pipeline.file_path
@@ -110,7 +173,7 @@ locals {
         ],
         [
           for variable_name in pipeline.config.variable_order :
-          "    ${variable_name}: ${pipeline.ci_variables[variable_name]}"
+          "    ${variable_name}: ${jsonencode(pipeline.ci_variables[variable_name])}"
           if contains(keys(pipeline.ci_variables), variable_name)
         ],
         [""]

@@ -1,0 +1,52 @@
+%{ if length(ci_access_projects) > 0 || length(ci_access_groups) > 0 || ci_access_instance ~}
+ci_access:
+%{ if ci_access_instance ~}
+  instance: {}
+%{ endif ~}
+%{ if length(ci_access_projects) > 0 ~}
+  projects:
+%{ for project in ci_access_projects ~}
+    - id: ${project.id}
+%{ if try(project.environments, null) != null ~}
+      environments: ${jsonencode(project.environments)}
+%{ endif ~}
+%{ if try(project.protected_branches_only, null) != null ~}
+      protected_branches_only: ${project.protected_branches_only}
+%{ endif ~}
+%{ if try(project.access_as.ci_job, null) != null ~}
+      access_as:
+        ci_job: {}
+%{ endif ~}
+%{ endfor ~}
+%{ endif ~}
+%{ if length(ci_access_groups) > 0 ~}
+  groups:
+%{ for group in ci_access_groups ~}
+    - id: ${group.id}
+%{ if try(group.environments, null) != null ~}
+      environments: ${jsonencode(group.environments)}
+%{ endif ~}
+%{ if try(group.protected_branches_only, null) != null ~}
+      protected_branches_only: ${group.protected_branches_only}
+%{ endif ~}
+%{ if try(group.access_as.ci_job, null) != null ~}
+      access_as:
+        ci_job: {}
+%{ endif ~}
+%{ endfor ~}
+%{ endif ~}
+%{ endif ~}
+
+%{ if length(user_access) > 0 ~}
+user_access:
+%{ if try(user_access.access_as.agent, null) != null ~}
+  access_as:
+    agent: {}
+%{ endif ~}
+%{ if try(length(user_access.projects), 0) > 0 ~}
+  projects:
+%{ for project in user_access.projects ~}
+    - id: ${project.id}
+%{ endfor ~}
+%{ endif ~}
+%{ endif ~}
