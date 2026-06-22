@@ -3,17 +3,17 @@ locals {
     build_ecr = {
       file_path      = "ci-pipelines/build-gitlab.ci.yaml"
       job_name       = "build"
-      extends        = ".build"
+      extends        = ".build-ecr"
       commit_message = "Add reusable build_ecr GitLab CI pipeline"
 
       include = {
         project = "das-meta/gitlab-ci-templates"
         ref     = "DMVP-1150"
-        file    = "/ci-templates/templates/build/ecr-buildx.gitlab-ci.yml"
+        file    = "/ci-templates/templates/build/ecr-build.gitlab-ci.yml"
       }
 
       default_variables = {
-        IMAGE_TAG       = "$CI_COMMIT_SHORT_SHA"
+        IMAGE_TAGS      = "$CI_COMMIT_SHORT_SHA"
         DOCKERFILE_PATH = "Dockerfile"
         BUILD_CONTEXT   = "."
       }
@@ -21,7 +21,7 @@ locals {
       variable_order = [
         "AWS_REGION",
         "IMAGE_REPOSITORY",
-        "IMAGE_TAG",
+        "IMAGE_TAGS",
         "DOCKERFILE_PATH",
         "BUILD_CONTEXT",
         "BUILD_ARGS",
@@ -31,7 +31,46 @@ locals {
       variable_keys = {
         aws_region         = "AWS_REGION"
         image_repository   = "IMAGE_REPOSITORY"
-        image_tag          = "IMAGE_TAG"
+        image_tags         = "IMAGE_TAGS"
+        dockerfile_path    = "DOCKERFILE_PATH"
+        build_context      = "BUILD_CONTEXT"
+        build_args         = "BUILD_ARGS"
+        buildx_create_args = "BUILDX_CREATE_ARGS"
+      }
+    }
+
+    build_onprem = {
+      file_path      = "ci-pipelines/build-gitlab.ci.yaml"
+      job_name       = "build"
+      extends        = ".build-onprem"
+      commit_message = "Add reusable on-premises registry build pipeline"
+
+      include = {
+        project = "das-meta/gitlab-ci-templates"
+        ref     = "DMVP-1150"
+        file    = "/ci-templates/templates/build/onprem-build.gitlab-ci.yml"
+      }
+
+      default_variables = {
+        IMAGE_TAGS      = "$CI_COMMIT_SHORT_SHA"
+        DOCKERFILE_PATH = "Dockerfile"
+        BUILD_CONTEXT   = "."
+      }
+
+      variable_order = [
+        "REGISTRY_HOST",
+        "IMAGE_REPOSITORY",
+        "IMAGE_TAGS",
+        "DOCKERFILE_PATH",
+        "BUILD_CONTEXT",
+        "BUILD_ARGS",
+        "BUILDX_CREATE_ARGS",
+      ]
+
+      variable_keys = {
+        registry_host      = "REGISTRY_HOST"
+        image_repository   = "IMAGE_REPOSITORY"
+        image_tags         = "IMAGE_TAGS"
         dockerfile_path    = "DOCKERFILE_PATH"
         build_context      = "BUILD_CONTEXT"
         build_args         = "BUILD_ARGS"
@@ -40,9 +79,9 @@ locals {
     }
 
     deploy_agent = {
-      file_path      = "ci-pipelines/deploy-gitlab.ci.yaml"
+      file_path      = "ci-pipelines/deploy.gitlab-ci.yml"
       job_name       = "deploy"
-      extends        = ".deploy"
+      extends        = ".deploy-agent"
       commit_message = "Add reusable deploy_agent GitLab CI pipeline"
 
       include = {
@@ -106,33 +145,59 @@ locals {
   normalized_ci_pipelines = flatten([
     for p in var.gitlab_projects : [
       for pipeline in try(p.gitlab_ci_pipelines, []) : {
-        key            = "${p.name}:${pipeline.type}"
+        key            = "${p.name}:${pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type}"
         project_name   = p.name
         type           = pipeline.type
-        config         = local.pipeline_types[pipeline.type]
+        config         = local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type]
         variables      = try(pipeline.variables, {})
         target_branch  = coalesce(try(p.default_branch, null), "main")
-        source_branch  = "terraform/ci-pipelines/${replace(pipeline.type, "_", "-")}"
+        source_branch  = "terraform/ci-pipelines/${replace(pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type, "_", "-")}"
         create_mr      = coalesce(try(pipeline.create_merge_request, null), true)
-        commit_message = coalesce(try(pipeline.commit_message, null), local.pipeline_types[pipeline.type].commit_message)
-        mr_title       = coalesce(try(pipeline.merge_request_title, null), local.pipeline_types[pipeline.type].commit_message)
+        commit_message = coalesce(try(pipeline.commit_message, null), local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].commit_message)
+        mr_title       = coalesce(try(pipeline.merge_request_title, null), local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].commit_message)
         remove_branch  = coalesce(try(pipeline.remove_source_branch, null), true)
-        file_path      = coalesce(try(pipeline.file_path, null), local.pipeline_types[pipeline.type].file_path)
-        job_name       = coalesce(try(pipeline.job_name, null), local.pipeline_types[pipeline.type].job_name)
-        ci_variables = merge(
-          local.pipeline_types[pipeline.type].default_variables,
-          {
-            for source_key, target_key in local.pipeline_types[pipeline.type].variable_keys :
-            target_key => try(pipeline.variables, {})[source_key]
-            if try(try(pipeline.variables, {})[source_key], null) != null
+        file_path      = coalesce(try(pipeline.file_path, null), local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].file_path)
+        jobs = length(try(pipeline.jobs, [])) > 0 ? [
+          for job in pipeline.jobs : {
+            name    = job.name
+            extends = local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].extends
+            rules   = coalesce(try(job.rules, null), [])
+            variables = merge(
+              local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].default_variables,
+              {
+                for source_key, target_key in local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].variable_keys :
+                target_key => source_key == "image_tags" ? join(
+                  "\n",
+                  tolist(try(job.variables, {})[source_key])
+                ) : tostring(try(job.variables, {})[source_key])
+                if try(try(job.variables, {})[source_key], null) != null
+              }
+            )
           }
-        )
+          ] : [
+          {
+            name    = coalesce(try(pipeline.job_name, null), local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].job_name)
+            extends = local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].extends
+            rules   = []
+            variables = merge(
+              local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].default_variables,
+              {
+                for source_key, target_key in local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].variable_keys :
+                target_key => source_key == "image_tags" ? join(
+                  "\n",
+                  tolist(try(pipeline.variables, {})[source_key])
+                ) : tostring(try(pipeline.variables, {})[source_key])
+                if try(try(pipeline.variables, {})[source_key], null) != null
+              }
+            )
+          }
+        ]
         template = {
-          project = coalesce(try(pipeline.template_project, null), local.pipeline_types[pipeline.type].include.project)
-          ref     = coalesce(try(pipeline.template_ref, null), local.pipeline_types[pipeline.type].include.ref)
-          file    = coalesce(try(pipeline.template_file, null), local.pipeline_types[pipeline.type].include.file)
+          project = coalesce(try(pipeline.template_project, null), local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].include.project)
+          ref     = coalesce(try(pipeline.template_ref, null), local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].include.ref)
+          file    = coalesce(try(pipeline.template_file, null), local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].include.file)
         }
-      } if contains(keys(local.pipeline_types), pipeline.type)
+      }
     ]
   ])
 
@@ -147,7 +212,7 @@ locals {
       mr_description = <<-EOT
         This merge request adds a reusable ${pipeline.type} pipeline wrapper generated by Terraform.
 
-        It creates `${pipeline.file_path}`. That file includes the shared GitLab CI template from `${pipeline.template.project}` and defines the `${pipeline.job_name}` job with project-specific variables.
+        It creates `${pipeline.file_path}`. That file includes the shared GitLab CI template from `${pipeline.template.project}` and defines these generated jobs: ${join(", ", [for job in pipeline.jobs : "`${job.name}`"])}.
 
         To use it, keep your root `.gitlab-ci.yml` or `.gitlab-ci.yaml` manually owned and add this include:
 
@@ -156,26 +221,73 @@ locals {
           - local: ${pipeline.file_path}
         ```
 
-        After that, GitLab will load the generated wrapper pipeline, which includes the shared reusable `${pipeline.config.extends}` template and runs the generated `${pipeline.job_name}` job.
+        After that, GitLab will load the generated wrapper pipeline and run the generated jobs.
       EOT
       remove_branch  = pipeline.remove_branch
       file_path      = pipeline.file_path
       content = join("\n", concat(
         [
+          "# GENERATED FILE - DO NOT EDIT",
+          "# Managed by Terraform. Manual changes may be overwritten.",
+          "# Update the source Terraform configuration instead.",
+          "",
           "include:",
           "  - project: ${pipeline.template.project}",
           "    ref: ${pipeline.template.ref}",
           "    file: ${pipeline.template.file}",
           "",
-          "${pipeline.job_name}:",
-          "  extends: ${pipeline.config.extends}",
-          "  variables:",
         ],
-        [
-          for variable_name in pipeline.config.variable_order :
-          "    ${variable_name}: ${jsonencode(pipeline.ci_variables[variable_name])}"
-          if contains(keys(pipeline.ci_variables), variable_name)
-        ],
+        flatten([
+          for job in pipeline.jobs : concat(
+            [
+              "${job.name}:",
+              "  extends: ${job.extends}",
+              "  variables:",
+            ],
+            [
+              for variable_name in pipeline.config.variable_order :
+              "    ${variable_name}: ${jsonencode(job.variables[variable_name])}"
+              if contains(keys(job.variables), variable_name)
+            ],
+            length(job.rules) == 0 ? [] : concat(
+              ["  rules:"],
+              flatten([
+                for rule in job.rules : concat(
+                  try(rule.if, null) == null ? [] : ["    - if: '${replace(rule.if, "'", "''")}'"],
+                  try(rule.if, null) != null || try(rule.when, null) == null ? [] : ["    - when: ${jsonencode(rule.when)}"],
+                  try(rule.if, null) == null || try(rule.when, null) == null ? [] : ["      when: ${jsonencode(rule.when)}"],
+                  try(rule.allow_failure, null) == null ? [] : [
+                    try(rule.if, null) != null || try(rule.when, null) != null
+                    ? "      allow_failure: ${jsonencode(rule.allow_failure)}"
+                    : "    - allow_failure: ${jsonencode(rule.allow_failure)}"
+                  ],
+                  length(coalesce(try(rule.changes, null), [])) == 0 ? [] : concat(
+                    [
+                      try(rule.if, null) != null || try(rule.when, null) != null || try(rule.allow_failure, null) != null
+                      ? "      changes:"
+                      : "    - changes:"
+                    ],
+                    [for path in coalesce(try(rule.changes, null), []) : "        - ${jsonencode(path)}"]
+                  ),
+                  length(coalesce(try(rule.exists, null), [])) == 0 ? [] : concat(
+                    [
+                      try(rule.if, null) != null || try(rule.when, null) != null || try(rule.allow_failure, null) != null || length(coalesce(try(rule.changes, null), [])) > 0
+                      ? "      exists:"
+                      : "    - exists:"
+                    ],
+                    [for path in coalesce(try(rule.exists, null), []) : "        - ${jsonencode(path)}"]
+                  ),
+                  try(rule.start_in, null) == null ? [] : [
+                    try(rule.if, null) != null || try(rule.when, null) != null || try(rule.allow_failure, null) != null || length(coalesce(try(rule.changes, null), [])) > 0 || length(coalesce(try(rule.exists, null), [])) > 0
+                    ? "      start_in: ${jsonencode(rule.start_in)}"
+                    : "    - start_in: ${jsonencode(rule.start_in)}"
+                  ]
+                )
+              ])
+            ),
+            [""]
+          )
+        ]),
         [""]
       ))
     }

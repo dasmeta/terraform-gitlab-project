@@ -15,7 +15,7 @@ formatting and validation commands.
 ## Technical Context
 
 **Terraform Runtime**: `>= 1.3` from `versions.tf`  
-**Primary Provider Constraints**: `gitlabhq/gitlab ~> 19.0` from `providers.tf`  
+**Primary Provider Constraints**: `gitlabhq/gitlab ~> 19.0` from `versions.tf`
 **Module Scope**: root module input contract plus `modules/project` resource mapping and examples/docs  
 **Testing Strategy**: `terraform fmt -check -recursive`, `terraform validate`, and `terraform -chdir=examples/basic validate` after init is available  
 **Target Platform**: GitLab API via Terraform provider  

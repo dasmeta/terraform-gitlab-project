@@ -13,6 +13,11 @@ module "gitlab" {
     { key = "GLOBAL_CI_TOKEN", value = "replace-with-shared-ci-token", masked = false },
     { key = "GLOBAL_LOG_LEVEL", value = "info" },
     { key = "AWS_REGION", value = "eu-central-1" },
+    { key = "AWS_ACCESS_KEY_ID", value = "access_key" },
+    { key = "AWS_SECRET_ACCESS_KEY", value = "secret_access_key", masked = true },
+    { key = "AWS_SESSION_TOKEN", value = "session_token" },
+    { key = "REGISTRY_USERNAME", value = "registry_username", masked = true },
+    { key = "REGISTRY_PASSWORD", value = "registry_password", masked = true },
   ]
 
   gitlab_groups = [
@@ -160,28 +165,78 @@ module "gitlab" {
       only_allow_merge_if_pipeline_succeeds = false
       gitlab_ci_pipelines = [
         {
-          type = "build_ecr"
-          variables = {
-            aws_region       = "eu-central-1"
-            image_repository = "565580475168.dkr.ecr.eu-central-1.amazonaws.com/vazgen-test"
-            image_tag        = "$CI_COMMIT_SHORT_SHA"
-            dockerfile_path  = "Dockerfile"
-            build_context    = "."
-          }
+          type   = "build"
+          target = "onprem"
+          jobs = [
+            {
+              name = "build-dev"
+              variables = {
+                registry_host    = "docker.io"
+                image_repository = "dasmeta/test"
+                image_tags       = ["dev-$CI_COMMIT_SHORT_SHA", "latest"]
+                dockerfile_path  = "Dockerfile"
+                build_context    = "."
+              }
+            },
+            {
+              name = "build-prod"
+              rules = [
+                {
+                  if = "$CI_COMMIT_TAG"
+                },
+              ]
+              variables = {
+                registry_host    = "docker.io"
+                image_repository = "dasmeta/test"
+                image_tags      = ["prod-$CI_COMMIT_SHORT_SHA"]
+                dockerfile_path = "Dockerfile"
+                build_context   = "."
+              }
+            },
+          ]
         },
         {
           type = "deploy_agent"
-          variables = {
-            deploy_environment_name                = "dev"
-            deploy_environment_kubernetes_agent    = "terraform-gitlab-module/second-test-group-tf/service-two:eks-agent"
-            deploy_environment_dashboard_namespace = "dev"
-            kube_namespace                         = "test-nginx"
-            helm_release                           = "demo-nginx"
-            helm_chart                             = "bitnami/nginx"
-            helm_repository_name                   = "bitnami"
-            helm_repository_url                    = "https://charts.bitnami.com/bitnami"
-            helm_wait                              = false
-          }
+          jobs = [
+            {
+              name = "deploy-dev"
+              rules = [
+                {
+                  if = "$CI_COMMIT_BRANCH == \"develop\""
+                },
+              ]
+              variables = {
+                deploy_environment_name                = "dev"
+                deploy_environment_kubernetes_agent    = "terraform-gitlab-module/second-test-group-tf/service-two:eks-agent"
+                deploy_environment_dashboard_namespace = "dev"
+                kube_namespace                         = "dev"
+                helm_release                           = "demo-nginx"
+                helm_chart                             = "bitnami/nginx"
+                helm_repository_name                   = "bitnami"
+                helm_repository_url                    = "https://charts.bitnami.com/bitnami"
+                helm_wait                              = false
+              }
+            },
+            {
+              name = "deploy-prod"
+              rules = [
+                {
+                  if = "$CI_COMMIT_TAG"
+                },
+              ]
+              variables = {
+                deploy_environment_name                = "prod"
+                deploy_environment_kubernetes_agent    = "terraform-gitlab-module/second-test-group-tf/service-two:eks-agent"
+                deploy_environment_dashboard_namespace = "prod"
+                kube_namespace                         = "prod"
+                helm_release                           = "demo-nginx"
+                helm_chart                             = "bitnami/nginx"
+                helm_repository_name                   = "bitnami"
+                helm_repository_url                    = "https://charts.bitnami.com/bitnami"
+                helm_wait                              = false
+              }
+            },
+          ]
         }
       ]
       merge_requests_template = <<-EOT

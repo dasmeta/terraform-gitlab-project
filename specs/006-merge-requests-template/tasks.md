@@ -33,7 +33,7 @@ implementation changes.
 **Critical**: Complete this phase before story-specific implementation starts.
 
 - [X] T004 Update the root `gitlab_projects` object schema in `variables.tf`
-- [X] T005 Confirm no provider or Terraform version constraint change is needed in `versions.tf` and `providers.tf`
+- [X] T005 Confirm no provider or Terraform version constraint change is needed in `versions.tf`
 - [X] T006 Confirm root project normalization forwards the field without local changes in `locals.tf`
 
 **Checkpoint**: Module foundations updated and ready for story-specific work.

@@ -97,10 +97,33 @@ locals {
     runner_tags           = local.dynamic_environments_runner_tags
   })
 
+  dynamic_environments_managed_directory_readme = <<-MD
+    # Terraform-managed directory
+
+    This directory is generated and managed by Terraform.
+    Do not edit files manually; changes may be overwritten.
+  MD
+
+  dynamic_environments_project_readme = <<-MD
+    # Dynamic Environments
+
+    This project is provisioned and maintained through Terraform.
+
+    Files under `config/` and `scripts/`, along with the root `.gitlab-ci.yml`,
+    are generated artifacts and must not be modified manually. Any out-of-band
+    changes may be overwritten during the next Terraform apply.
+
+    Update the corresponding Terraform configuration in the source module
+    instead of editing generated files directly.
+  MD
+
   dynamic_environments_central_files = local.dynamic_environments_project_enabled ? {
+    "README.md"                = local.dynamic_environments_project_readme
     "config/applications.yaml" = local.dynamic_environments_applications_yaml
+    "config/README.md"         = local.dynamic_environments_managed_directory_readme
     "scripts/deploy_stack.py"  = local.dynamic_environments_deploy_stack_py
     "scripts/clean_stack.py"   = local.dynamic_environments_clean_stack_py
+    "scripts/README.md"        = local.dynamic_environments_managed_directory_readme
     ".gitlab-ci.yml"           = local.dynamic_environments_gitlab_ci_yml
   } : {}
 

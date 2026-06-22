@@ -64,122 +64,122 @@ variable "global_env_variables" {
 
 variable "dynamic_environments_project" {
   type = object({
-    enabled                = optional(bool, false)
-    name                   = optional(string)
-    description            = optional(string, "Dynamic environments orchestration")
-    visibility_level       = optional(string, "private")
-    default_branch         = optional(string, "main")
-    initialize_with_readme = optional(bool, true)
-    namespace_id           = optional(number)
-    group_key              = optional(string)
-    source_branch          = optional(string, "feature/dynamic-environments")
-    mr_title               = optional(string, "Add dynamic environments orchestration")
-    gitlab_api_url         = optional(string, "https://gitlab.com/api/v4")
-    gitlab_agent_path      = optional(string)
-    cluster_name           = optional(string, "eks-dev")
-    deploy_mode            = optional(string, "aws_eks")
-    runner_tags            = optional(list(string), ["k8s-runner"])
-    gitlab_agent = optional(object({
-      enabled             = optional(bool, false)
-      name                = optional(string)
-      config_project_name = optional(string)
-      config_project_id   = optional(string)
-      config_project_path = optional(string)
-      source_branch       = optional(string, "feature/gitlab-agent-config")
-      target_branch       = optional(string, "main")
-      mr_title            = optional(string, "Add GitLab Agent configuration")
-      config_file_path    = optional(string)
-      register_agent      = optional(bool, false)
-      token_name          = optional(string)
-      token_description   = optional(string)
-      install = optional(object({
-        enabled          = optional(bool, false)
-        release_name     = optional(string)
-        namespace        = optional(string)
-        create_namespace = optional(bool, true)
-        repository       = optional(string, "https://charts.gitlab.io")
-        chart            = optional(string, "gitlab-agent")
-        chart_version    = optional(string)
-        kas_address      = optional(string, "wss://kas.gitlab.com")
-        timeout          = optional(number, 300)
-        wait             = optional(bool, true)
-        atomic           = optional(bool, false)
-        values           = optional(list(string), [])
-        set_values = optional(list(object({
-          name  = string
-          value = string
-          type  = optional(string)
+    enabled                = optional(bool, false)                                      # Create and configure the central dynamic environments project
+    name                   = optional(string)                                           # Central project name; required when enabled
+    description            = optional(string, "Dynamic environments orchestration")     # Central project description
+    visibility_level       = optional(string, "private")                                # private | internal | public
+    default_branch         = optional(string, "main")                                   # Target and default branch for generated configuration
+    initialize_with_readme = optional(bool, true)                                       # Initialize the central project with a README
+    namespace_id           = optional(number)                                           # Explicit GitLab namespace id for the central project
+    group_key              = optional(string)                                           # Resolve namespace through gitlab_groups[].key
+    source_branch          = optional(string, "feature/dynamic-environments")           # Source branch used for generated orchestration files
+    mr_title               = optional(string, "Add dynamic environments orchestration") # Merge request title for orchestration changes
+    gitlab_api_url         = optional(string, "https://gitlab.com/api/v4")              # GitLab API base URL used by generated jobs
+    gitlab_agent_path      = optional(string)                                           # GitLab Agent context path used by generated CI
+    cluster_name           = optional(string, "eks-dev")                                # Kubernetes cluster name used by deployment jobs
+    deploy_mode            = optional(string, "aws_eks")                                # Deployment integration mode: aws_eks | gitlab_agent
+    runner_tags            = optional(list(string), ["k8s-runner"])                     # GitLab runner tags assigned to generated jobs
+    gitlab_agent = optional(object({                                                    # GitLab Agent configuration, registration, installation, and access settings
+      enabled             = optional(bool, false)                                       # Generate and optionally register GitLab Agent configuration
+      name                = optional(string)                                            # Agent name; falls back to cluster_name when omitted
+      config_project_name = optional(string)                                            # Managed project name that stores the agent configuration
+      config_project_id   = optional(string)                                            # Existing project id that stores the agent configuration
+      config_project_path = optional(string)                                            # Full namespace/project path for an existing config project
+      source_branch       = optional(string, "feature/gitlab-agent-config")             # Source branch for generated agent configuration
+      target_branch       = optional(string, "main")                                    # Merge request target branch for agent configuration
+      mr_title            = optional(string, "Add GitLab Agent configuration")          # Merge request title for agent configuration changes
+      config_file_path    = optional(string)                                            # Repository path for the generated agent config.yaml
+      register_agent      = optional(bool, false)                                       # Register the agent and create an authentication token
+      token_name          = optional(string)                                            # Name assigned to the generated agent token
+      token_description   = optional(string)                                            # Description assigned to the generated agent token
+      install = optional(object({                                                       # Helm installation settings for the GitLab Agent
+        enabled          = optional(bool, false)                                        # Install the GitLab Agent Helm chart
+        release_name     = optional(string)                                             # Helm release name for the agent installation
+        namespace        = optional(string)                                             # Kubernetes namespace for the Helm release
+        create_namespace = optional(bool, true)                                         # Create the Kubernetes namespace when missing
+        repository       = optional(string, "https://charts.gitlab.io")                 # Helm repository containing the agent chart
+        chart            = optional(string, "gitlab-agent")                             # Helm chart name
+        chart_version    = optional(string)                                             # Helm chart version; provider default when omitted
+        kas_address      = optional(string, "wss://kas.gitlab.com")                     # GitLab Kubernetes Agent Server WebSocket address
+        timeout          = optional(number, 300)                                        # Helm operation timeout in seconds
+        wait             = optional(bool, true)                                         # Wait for Helm resources to become ready
+        atomic           = optional(bool, false)                                        # Roll back the Helm release when installation fails
+        values           = optional(list(string), [])                                   # Additional YAML values passed to the Helm release
+        set_values = optional(list(object({                                             # Additional individual Helm values
+          name  = string                                                                # Helm value key passed through a set block
+          value = string                                                                # Helm value assigned to the key
+          type  = optional(string)                                                      # Helm set value type, such as string or auto
         })), [])
       }), {})
-      ci_access = optional(object({
-        instance = optional(bool, false)
-        projects = optional(list(object({
-          id                      = string
-          environments            = optional(list(string))
-          protected_branches_only = optional(bool)
-          access_as_ci_job        = optional(bool, false)
+      ci_access = optional(object({                        # CI/CD identities allowed to use the agent
+        instance = optional(bool, false)                   # Allow CI jobs from all projects in the GitLab instance
+        projects = optional(list(object({                  # Project-specific CI access entries
+          id                      = string                 # Project id or full path allowed to access the agent
+          environments            = optional(list(string)) # Restrict access to the listed GitLab environments
+          protected_branches_only = optional(bool)         # Restrict access to jobs running on protected branches
+          access_as_ci_job        = optional(bool, false)  # Authenticate access as the CI job identity
         })), [])
-        groups = optional(list(object({
-          id                      = string
-          environments            = optional(list(string))
-          protected_branches_only = optional(bool)
-          access_as_ci_job        = optional(bool, false)
+        groups = optional(list(object({                    # Group-specific CI access entries
+          id                      = string                 # Group id or full path allowed to access the agent
+          environments            = optional(list(string)) # Restrict access to the listed GitLab environments
+          protected_branches_only = optional(bool)         # Restrict access to jobs running on protected branches
+          access_as_ci_job        = optional(bool, false)  # Authenticate access as the CI job identity
         })), [])
       }), {})
-      user_access = optional(object({
-        access_as_agent = optional(bool)
-        projects = optional(list(object({
-          id = string
+      user_access = optional(object({     # Interactive user access configuration
+        access_as_agent = optional(bool)  # Authenticate users through the agent identity
+        projects = optional(list(object({ # Projects whose users may access the agent
+          id = string                     # Project id or full path whose users may access the agent
         })), [])
       }), {})
     }), {})
-    deploy_config = optional(object({
-      aws_region                   = optional(string, "eu-central-1")
-      namespace_prefix             = optional(string, "e2e-")
-      fallback_image_tag           = optional(string, "latest")
-      gitlab_api_timeout_seconds   = optional(number, 20)
-      gitlab_api_url               = optional(string)
-      gitlab_clone_base_url        = optional(string, "https://gitlab.com")
-      helm_repo_name               = optional(string, "dasmeta")
-      helm_repo_url                = optional(string, "https://dasmeta.github.io/helm")
-      work_dir                     = optional(string, "/tmp/dynamic-deploy")
-      helm_dir                     = optional(string, "helm")
-      image_tag_set_path           = optional(string, "image.tag")
-      migration_image_tag_set_path = optional(string, "job.image.tag")
-      base_ref_fallbacks           = optional(list(string), ["main", "master"])
-      helm_value_files             = optional(list(string), ["values.yaml", "values.dev.yaml"])
-      helm_optional_value_files    = optional(list(string), ["values.dev.<APP_COMPONENT>.yaml"])
-      helm_required_value_files    = optional(list(string), ["values.e2e.yaml"])
-      helm_migration_value_files   = optional(list(string), ["values.e2e.migration.yaml"])
+    deploy_config = optional(object({                                                            # Defaults used by generated dynamic deployment jobs
+      aws_region                   = optional(string, "eu-central-1")                            # AWS region used by generated deployment jobs
+      namespace_prefix             = optional(string, "e2e-")                                    # Prefix for dynamic Kubernetes namespaces
+      fallback_image_tag           = optional(string, "latest")                                  # Image tag used when no build version is available
+      gitlab_api_timeout_seconds   = optional(number, 20)                                        # Timeout for GitLab API requests in generated scripts
+      gitlab_api_url               = optional(string)                                            # Override GitLab API URL for deployment jobs
+      gitlab_clone_base_url        = optional(string, "https://gitlab.com")                      # Base URL used to clone GitLab repositories
+      helm_repo_name               = optional(string, "dasmeta")                                 # Helm repository alias used by generated jobs
+      helm_repo_url                = optional(string, "https://dasmeta.github.io/helm")          # Helm repository URL used by generated jobs
+      work_dir                     = optional(string, "/tmp/dynamic-deploy")                     # Temporary working directory in deployment jobs
+      helm_dir                     = optional(string, "helm")                                    # Repository directory containing Helm values
+      image_tag_set_path           = optional(string, "image.tag")                               # Helm value path for the application image tag
+      migration_image_tag_set_path = optional(string, "job.image.tag")                           # Helm value path for the migration image tag
+      base_ref_fallbacks           = optional(list(string), ["main", "master"])                  # Fallback Git refs used when the requested ref is unavailable
+      helm_value_files             = optional(list(string), ["values.yaml", "values.dev.yaml"])  # Default Helm values files loaded for deployments
+      helm_optional_value_files    = optional(list(string), ["values.dev.<APP_COMPONENT>.yaml"]) # Component-specific values files loaded when present
+      helm_required_value_files    = optional(list(string), ["values.e2e.yaml"])                 # Values files that must exist for dynamic deployments
+      helm_migration_value_files   = optional(list(string), ["values.e2e.migration.yaml"])       # Additional values files used for migration jobs
     }), {})
-    cleanup_config = optional(object({
-      namespace_prefix      = optional(string, "e2e-")
-      max_attempts          = optional(number, 3)
-      retry_backoff_seconds = optional(number, 5)
+    cleanup_config = optional(object({                 # Dynamic environment cleanup behavior
+      namespace_prefix      = optional(string, "e2e-") # Prefix identifying dynamic namespaces eligible for cleanup
+      max_attempts          = optional(number, 3)      # Maximum cleanup attempts before failing the job
+      retry_backoff_seconds = optional(number, 5)      # Delay in seconds between cleanup attempts
     }), {})
-    applications = optional(object({
-      defaults = optional(object({
-        aws_region          = optional(string, "eu-central-1")
-        secret_env          = optional(string, "dev")
-        base_ref            = optional(string, "main")
-        base_ref_fallbacks  = optional(list(string))
-        helm_chart          = optional(string, "dasmeta/base")
-        helm_timeout        = optional(string, "40m")
-        dynamic_base_domain = optional(string)
-        dynamic_env_release = optional(string)
+    applications = optional(object({                           # Application and infrastructure deployment catalog
+      defaults = optional(object({                             # Shared defaults applied to application deployment entries
+        aws_region          = optional(string, "eu-central-1") # Default AWS region for application deployments
+        secret_env          = optional(string, "dev")          # Default environment name used to resolve application secrets
+        base_ref            = optional(string, "main")         # Default Git ref used for application repositories
+        base_ref_fallbacks  = optional(list(string))           # Fallback Git refs for application repositories
+        helm_chart          = optional(string, "dasmeta/base") # Default Helm chart used by application deployments
+        helm_timeout        = optional(string, "40m")          # Default Helm operation timeout
+        dynamic_base_domain = optional(string)                 # Base DNS domain for generated dynamic environments
+        dynamic_env_release = optional(string)                 # Default release identifier for dynamic environments
       }), {})
-      infra_deployments = optional(any, [])
-      deployments = optional(list(object({
-        project            = string
-        helm_release       = string
-        app_component      = string
-        helm_version       = string
-        db_migration       = optional(bool)
-        helm_overrides     = optional(list(string))
-        base_ref           = optional(string)
-        base_ref_fallbacks = optional(list(string))
-        source_environment = optional(string)
-        set_build_version  = optional(bool)
+      infra_deployments = optional(any, [])         # Infrastructure deployment definitions rendered without schema transformation
+      deployments = optional(list(object({          # Application deployments rendered into applications.yaml
+        project            = string                 # GitLab project path containing the application
+        helm_release       = string                 # Helm release name for the application
+        app_component      = string                 # Application component identifier used in generated values paths
+        helm_version       = string                 # Helm chart version for the application
+        db_migration       = optional(bool)         # Enable the database migration deployment path
+        helm_overrides     = optional(list(string)) # Additional Helm command-line overrides
+        base_ref           = optional(string)       # Application-specific Git ref override
+        base_ref_fallbacks = optional(list(string)) # Application-specific fallback Git refs
+        source_environment = optional(string)       # Environment from which configuration and secrets are sourced
+        set_build_version  = optional(bool)         # Set the resolved build version in Helm values
       })), [])
     }), null)
   })
@@ -297,39 +297,40 @@ variable "gitlab_projects" {
     merge_requests_template                          = optional(string)               # Default merge request description template
     resolve_outdated_diff_discussions                = optional(bool)                 # Automatically resolve outdated diff discussions
     branch_protections_enabled                       = optional(bool, true)           # Create branch protection resources for this project
-    branch_protections = optional(list(object({
-      branch                       = string                         # Protected branch name
-      merge_access_level           = optional(string, "maintainer") # Merge access role
-      push_access_level            = optional(string, "maintainer") # Push access role
-      allow_force_push             = optional(bool, false)          # Allow force-push on the branch
-      code_owner_approval_required = optional(bool, false)          # Require code-owner approval
-      unprotect_access_level       = optional(string, "maintainer") # Unprotect access role
+    branch_protections = optional(list(object({                                       # Protected branch rules created for this project
+      branch                       = string                                           # Protected branch name
+      merge_access_level           = optional(string, "maintainer")                   # Merge access role
+      push_access_level            = optional(string, "maintainer")                   # Push access role
+      allow_force_push             = optional(bool, false)                            # Allow force-push on the branch
+      code_owner_approval_required = optional(bool, false)                            # Require code-owner approval
+      unprotect_access_level       = optional(string, "maintainer")                   # Unprotect access role
     })), [])
-    approval_rule = optional(list(object({
+    approval_rule = optional(list(object({                                  # Project approval rules
       name                              = optional(string, "Approval rule") # Approval rule display name
       approvals_required                = optional(number, 1)               # Number of approvals required
       applies_to_all_protected_branches = optional(bool, false)             # Apply rule to all protected branches
       user_ids                          = optional(list(number))            # Explicit approver user ids
       group_ids                         = optional(list(number))            # Explicit approver group ids
     })), [])
-    push_rules = optional(list(any), []) # Provider-shaped push rules consumed by gitlab_project.push_rules
-    env_variables = optional(list(object({
-      key       = string                # CI/CD variable name
-      value     = string                # CI/CD variable value
-      masked    = optional(bool, false) # Hide value in logs / UI where supported
-      protected = optional(bool, false) # Restrict variable to protected refs
+    push_rules = optional(list(any), [])   # Provider-shaped push rules consumed by gitlab_project.push_rules
+    env_variables = optional(list(object({ # Project-specific CI/CD variables
+      key       = string                   # CI/CD variable name
+      value     = string                   # CI/CD variable value
+      masked    = optional(bool, false)    # Hide value in logs / UI where supported
+      protected = optional(bool, false)    # Restrict variable to protected refs
     })), [])
-    dynamic_environment = optional(object({
-      enabled             = optional(bool, false)
-      ci_file_path        = optional(string, "ci-pipelines/dynamic-environment.gitlab-ci.yml")
-      stage               = optional(string, "e2e-test-dynamic")
-      cleanup_stage       = optional(string, "e2e-test-dynamic-clean")
-      needs               = optional(list(string), ["deploy"])
-      source_environment  = optional(string, "dev")
-      dynamic_env_release = optional(string)
+    dynamic_environment = optional(object({                                                    # Per-project dynamic environment pipeline configuration
+      enabled             = optional(bool, false)                                              # Enable generated dynamic environment CI jobs for this project
+      ci_file_path        = optional(string, "ci-pipelines/dynamic-environment.gitlab-ci.yml") # Repository path for the generated CI configuration
+      stage               = optional(string, "e2e-test-dynamic")                               # GitLab CI stage used for dynamic environment deployment
+      cleanup_stage       = optional(string, "e2e-test-dynamic-clean")                         # GitLab CI stage used for dynamic environment cleanup
+      needs               = optional(list(string), ["deploy"])                                 # Upstream GitLab CI jobs required before deployment
+      source_environment  = optional(string, "dev")                                            # Environment from which configuration and secrets are sourced
+      dynamic_env_release = optional(string)                                                   # Release identifier used by generated dynamic environment jobs
     }), null)
-    gitlab_ci_pipelines = optional(list(object({
-      type                 = string                                           # Supported types: build_ecr, deploy_agent
+    gitlab_ci_pipelines = optional(list(object({                              # Reusable GitLab CI pipeline files managed for this project
+      type                 = string                                           # Pipeline family: build, deploy_agent; build_ecr remains a compatibility alias
+      target               = optional(string)                                 # Required for type build: ecr or onprem
       create_merge_request = optional(bool, true)                             # Open a merge request instead of committing directly to the target branch
       merge_request_title  = optional(string)                                 # Merge request title; defaults to the pipeline commit message
       remove_source_branch = optional(bool, true)                             # Remove source branch after merge
@@ -339,7 +340,75 @@ variable "gitlab_projects" {
       template_project     = optional(string, "das-meta/gitlab-ci-templates") # Project containing reusable templates
       template_ref         = optional(string, "DMVP-1150")                    # Template branch/tag/sha to include
       template_file        = optional(string)                                 # Defaults according to pipeline type
-      variables            = optional(map(string), {})                        # Pipeline-type-specific variables in snake_case
+      variables = optional(object({                                           # Pipeline-type-specific variables
+        aws_region                             = optional(string)                             # AWS region for ECR build jobs
+        registry_host                          = optional(string)                             # Container registry hostname for on-premises build jobs
+        image_repository                       = optional(string)                             # Image repository path without tag
+        image_tags                             = optional(list(string))                     # Tags to push; each list entry becomes a separate tag
+        dockerfile_path                        = optional(string)                             # Dockerfile path relative to build context
+        build_context                          = optional(string)                             # Docker build context directory
+        build_args                             = optional(string)                             # Additional docker buildx build --build-arg values
+        buildx_create_args                     = optional(string)                             # Extra arguments passed to docker buildx create
+        deploy_environment_name                = optional(string)                             # GitLab environment name created for the deployment
+        deploy_environment_kubernetes_agent    = optional(string)                             # GitLab Agent path for the deployment environment
+        deploy_environment_dashboard_namespace = optional(string)                             # Kubernetes namespace shown in the GitLab deploy board
+        kube_namespace                         = optional(string)                             # Target Kubernetes namespace for the Helm release
+        kube_namespace_create                  = optional(bool)                               # Create the Kubernetes namespace when it does not exist
+        helm_release                           = optional(string)                             # Helm release name
+        helm_chart                             = optional(string)                             # Helm chart name or path
+        helm_chart_version                     = optional(string)                             # Helm chart version to deploy
+        helm_repository_name                   = optional(string)                             # Helm repository alias added before install
+        helm_repository_url                    = optional(string)                             # Helm repository URL added before install
+        helm_values_args                       = optional(string)                             # Additional Helm --values arguments
+        helm_set_args                          = optional(string)                             # Additional Helm --set arguments
+        helm_extra_args                        = optional(string)                             # Extra arguments passed to helm upgrade/install
+        deploy_image_repository                = optional(string)                             # Container image repository passed to Helm
+        helm_image_repository_set_path         = optional(string)                             # Helm value path for the image repository
+        deploy_image_tag                       = optional(string)                             # Container image tag passed to Helm
+        helm_image_tag_set_path                = optional(string)                             # Helm value path for the image tag
+        helm_wait                              = optional(bool)                               # Wait for Helm resources to become ready
+        helm_timeout                           = optional(string)                             # Helm operation timeout (for example 40m)
+      }), {})
+      jobs = optional(list(object({   # Multiple jobs rendered into the same generated pipeline file
+        name = string                 # Generated GitLab CI job name
+        variables = optional(object({ # Job-specific variables
+          aws_region                             = optional(string)                             # AWS region for ECR build jobs
+          registry_host                          = optional(string)                             # Container registry hostname for on-premises build jobs
+          image_repository                       = optional(string)                             # Image repository path without tag
+          image_tags                             = optional(list(string))                     # Tags to push; each list entry becomes a separate tag
+          dockerfile_path                        = optional(string)                             # Dockerfile path relative to build context
+          build_context                          = optional(string)                             # Docker build context directory
+          build_args                             = optional(string)                             # Additional docker buildx build --build-arg values
+          buildx_create_args                     = optional(string)                             # Extra arguments passed to docker buildx create
+          deploy_environment_name                = optional(string)                             # GitLab environment name created for the deployment
+          deploy_environment_kubernetes_agent    = optional(string)                             # GitLab Agent path for the deployment environment
+          deploy_environment_dashboard_namespace = optional(string)                             # Kubernetes namespace shown in the GitLab deploy board
+          kube_namespace                         = optional(string)                             # Target Kubernetes namespace for the Helm release
+          kube_namespace_create                  = optional(bool)                               # Create the Kubernetes namespace when it does not exist
+          helm_release                           = optional(string)                             # Helm release name
+          helm_chart                             = optional(string)                             # Helm chart name or path
+          helm_chart_version                     = optional(string)                             # Helm chart version to deploy
+          helm_repository_name                   = optional(string)                             # Helm repository alias added before install
+          helm_repository_url                    = optional(string)                             # Helm repository URL added before install
+          helm_values_args                       = optional(string)                             # Additional Helm --values arguments
+          helm_set_args                          = optional(string)                             # Additional Helm --set arguments
+          helm_extra_args                        = optional(string)                             # Extra arguments passed to helm upgrade/install
+          deploy_image_repository                = optional(string)                             # Container image repository passed to Helm
+          helm_image_repository_set_path         = optional(string)                             # Helm value path for the image repository
+          deploy_image_tag                       = optional(string)                             # Container image tag passed to Helm
+          helm_image_tag_set_path                = optional(string)                             # Helm value path for the image tag
+          helm_wait                              = optional(bool)                               # Wait for Helm resources to become ready
+          helm_timeout                           = optional(string)                             # Helm operation timeout (for example 40m)
+        }), {})
+        rules = optional(list(object({           # Ordered GitLab CI rules for this generated job; null when omitted
+          if            = optional(string)       # GitLab CI expression evaluated for the rule
+          when          = optional(string)       # Job scheduling behavior such as on_success, manual, or never
+          allow_failure = optional(bool)         # Allow this rule's job execution to fail
+          changes       = optional(list(string)) # Run when matching files change
+          exists        = optional(list(string)) # Run when matching repository paths exist
+          start_in      = optional(string)       # Delay used with when = delayed
+        })))
+      })), [])
     })), [])
   }))
   description = <<-EOT
@@ -398,13 +467,16 @@ variable "gitlab_projects" {
     dynamic_environments_project.enabled must also be true.
 
     gitlab_ci_pipelines — Optional per-project generated repository files under ci-pipelines/.
-    For type = "build_ecr", the module writes ci-pipelines/build-gitlab.ci.yaml with an include of
-    das-meta/gitlab-ci-templates and a concrete job that extends the reusable .build template while passing
-    ECR/buildx variables. build_ecr requires variables.aws_region and variables.image_repository.
+    For type = "build", set pipeline target to "ecr" or "onprem". The module writes
+    ci-pipelines/build-gitlab.ci.yaml and all jobs in that pipeline use the selected template.
+    ECR jobs require aws_region and image_repository. On-premises jobs require registry_host and
+    image_repository; REGISTRY_USERNAME and REGISTRY_PASSWORD must be supplied through env_variables.
+    Legacy type = "build_ecr" remains supported without target.
 
-    For type = "deploy_agent", the module writes ci-pipelines/deploy-gitlab.ci.yaml with an include of
-    the reusable GitLab Agent deploy template and a concrete job that extends .deploy. deploy_agent requires
-    environment, agent, namespace, release, and chart variables.
+    For type = "deploy_agent", the module writes ci-pipelines/deploy.gitlab-ci.yml with one include of
+    the reusable GitLab Agent deploy template. Set jobs to generate multiple jobs in that file; each job
+    extends .deploy-agent and owns its variables. When jobs is omitted or empty, legacy job_name + variables
+    generates one deploy job. jobs[].rules supports if, when, allow_failure, changes, exists, and start_in.
   EOT
   validation {
     condition = alltrue([
@@ -441,23 +513,96 @@ variable "gitlab_projects" {
     condition = alltrue(flatten([
       for p in var.gitlab_projects : [
         for pipeline in try(p.gitlab_ci_pipelines, []) :
-        contains(["build_ecr", "deploy_agent"], pipeline.type)
+        !contains(["build", "build_ecr"], pipeline.type) || alltrue([
+          for build_variables in concat(
+            [try(pipeline.variables, {})],
+            [for job in try(pipeline.jobs, []) : try(job.variables, {})]
+            ) : (
+            try(build_variables.image_tags, null) == null ||
+            can(tolist(build_variables.image_tags)) &&
+            alltrue([for tag in tolist(build_variables.image_tags) : can(tostring(tag)) && length(trimspace(tostring(tag))) > 0])
+          )
+        ])
       ]
     ]))
-    error_message = "gitlab_projects[].gitlab_ci_pipelines[].type must be one of: build_ecr, deploy_agent."
+    error_message = "Build variables must use image_tags as a non-empty list of non-empty strings when set."
   }
 
   validation {
     condition = alltrue(flatten([
       for p in var.gitlab_projects : [
         for pipeline in try(p.gitlab_ci_pipelines, []) :
-        pipeline.type != "build_ecr" || (
-          contains(keys(try(pipeline.variables, {})), "aws_region") &&
-          contains(keys(try(pipeline.variables, {})), "image_repository")
-        )
+        contains(["build", "build_ecr", "deploy_agent"], pipeline.type)
       ]
     ]))
-    error_message = "gitlab_projects[].gitlab_ci_pipelines[] with type build_ecr must set variables.aws_region and variables.image_repository."
+    error_message = "gitlab_projects[].gitlab_ci_pipelines[].type must be one of: build, build_ecr, deploy_agent."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for p in var.gitlab_projects : [
+        for pipeline in try(p.gitlab_ci_pipelines, []) :
+        pipeline.type == "build"
+        ? try(pipeline.target, null) != null && contains(["ecr", "onprem"], pipeline.target)
+        : try(pipeline.target, null) == null
+      ]
+    ]))
+    error_message = "Build pipelines must set target to ecr or onprem; other pipeline types must omit target."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for p in var.gitlab_projects : [
+        for pipeline in try(p.gitlab_ci_pipelines, []) :
+        !(
+          pipeline.type == "build_ecr" ||
+          (pipeline.type == "build" && try(pipeline.target, null) == "ecr")
+          ) || alltrue([
+            for required_values in concat(
+              [
+                for job in try(pipeline.jobs, []) : {
+                  aws_region       = try(job.variables.aws_region, null) == null ? "" : job.variables.aws_region
+                  image_repository = try(job.variables.image_repository, null) == null ? "" : job.variables.image_repository
+                }
+              ],
+              length(try(pipeline.jobs, [])) == 0 ? [{
+                aws_region       = try(pipeline.variables.aws_region, null) == null ? "" : pipeline.variables.aws_region
+                image_repository = try(pipeline.variables.image_repository, null) == null ? "" : pipeline.variables.image_repository
+              }] : []
+              ) : (
+              length(trimspace(required_values.aws_region)) > 0 &&
+              length(trimspace(required_values.image_repository)) > 0
+            )
+        ])
+      ]
+    ]))
+    error_message = "Each ECR build job must set aws_region and image_repository in its variables."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for p in var.gitlab_projects : [
+        for pipeline in try(p.gitlab_ci_pipelines, []) :
+        !(pipeline.type == "build" && try(pipeline.target, null) == "onprem") || alltrue([
+          for required_values in concat(
+            [
+              for job in try(pipeline.jobs, []) : {
+                registry_host    = try(job.variables.registry_host, null) == null ? "" : job.variables.registry_host
+                image_repository = try(job.variables.image_repository, null) == null ? "" : job.variables.image_repository
+              }
+            ],
+            length(try(pipeline.jobs, [])) == 0 ? [{
+              registry_host    = try(pipeline.variables.registry_host, null) == null ? "" : pipeline.variables.registry_host
+              image_repository = try(pipeline.variables.image_repository, null) == null ? "" : pipeline.variables.image_repository
+            }] : []
+            ) : (
+            length(trimspace(required_values.registry_host)) > 0 &&
+            length(trimspace(required_values.image_repository)) > 0
+          )
+        ])
+      ]
+    ]))
+    error_message = "Each on-premises build job must set registry_host and image_repository in its variables."
   }
 
   validation {
@@ -465,21 +610,75 @@ variable "gitlab_projects" {
       for p in var.gitlab_projects : [
         for pipeline in try(p.gitlab_ci_pipelines, []) :
         pipeline.type != "deploy_agent" || alltrue([
-          for variable_name in [
-            "deploy_environment_name",
-            "deploy_environment_kubernetes_agent",
-            "deploy_environment_dashboard_namespace",
-            "kube_namespace",
-            "helm_release",
-            "helm_chart",
-            ] : (
-            contains(keys(try(pipeline.variables, {})), variable_name) &&
-            length(trimspace(try(pipeline.variables[variable_name], ""))) > 0
-          )
+          for required_values in concat(
+            [
+              for job in try(pipeline.jobs, []) : {
+                deploy_environment_name                = try(job.variables.deploy_environment_name, null) == null ? "" : job.variables.deploy_environment_name
+                deploy_environment_kubernetes_agent    = try(job.variables.deploy_environment_kubernetes_agent, null) == null ? "" : job.variables.deploy_environment_kubernetes_agent
+                deploy_environment_dashboard_namespace = try(job.variables.deploy_environment_dashboard_namespace, null) == null ? "" : job.variables.deploy_environment_dashboard_namespace
+                kube_namespace                         = try(job.variables.kube_namespace, null) == null ? "" : job.variables.kube_namespace
+                helm_release                           = try(job.variables.helm_release, null) == null ? "" : job.variables.helm_release
+                helm_chart                             = try(job.variables.helm_chart, null) == null ? "" : job.variables.helm_chart
+              }
+            ],
+            length(try(pipeline.jobs, [])) == 0 ? [{
+              deploy_environment_name                = try(pipeline.variables.deploy_environment_name, null) == null ? "" : pipeline.variables.deploy_environment_name
+              deploy_environment_kubernetes_agent    = try(pipeline.variables.deploy_environment_kubernetes_agent, null) == null ? "" : pipeline.variables.deploy_environment_kubernetes_agent
+              deploy_environment_dashboard_namespace = try(pipeline.variables.deploy_environment_dashboard_namespace, null) == null ? "" : pipeline.variables.deploy_environment_dashboard_namespace
+              kube_namespace                         = try(pipeline.variables.kube_namespace, null) == null ? "" : pipeline.variables.kube_namespace
+              helm_release                           = try(pipeline.variables.helm_release, null) == null ? "" : pipeline.variables.helm_release
+              helm_chart                             = try(pipeline.variables.helm_chart, null) == null ? "" : pipeline.variables.helm_chart
+            }] : []
+            ) : alltrue([
+              for value in values(required_values) : length(trimspace(value)) > 0
+          ])
         ])
       ]
     ]))
-    error_message = "gitlab_projects[].gitlab_ci_pipelines[] with type deploy_agent must set variables.deploy_environment_name, deploy_environment_kubernetes_agent, deploy_environment_dashboard_namespace, kube_namespace, helm_release, and helm_chart."
+    error_message = "Each deploy_agent job must set deploy_environment_name, deploy_environment_kubernetes_agent, deploy_environment_dashboard_namespace, kube_namespace, helm_release, and helm_chart in its variables."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for p in var.gitlab_projects : [
+        for pipeline in try(p.gitlab_ci_pipelines, []) :
+        length(try(pipeline.jobs, [])) == length(distinct([
+          for job in try(pipeline.jobs, []) : job.name
+        ]))
+      ]
+    ]))
+    error_message = "gitlab_projects[].gitlab_ci_pipelines[].jobs must use unique names within each pipeline entry."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for p in var.gitlab_projects : [
+        for pipeline in try(p.gitlab_ci_pipelines, []) :
+        alltrue([
+          for job in try(pipeline.jobs, []) : length(trimspace(job.name)) > 0
+        ])
+      ]
+    ]))
+    error_message = "gitlab_projects[].gitlab_ci_pipelines[].jobs[].name must be non-empty."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for p in var.gitlab_projects : flatten([
+        for pipeline in try(p.gitlab_ci_pipelines, []) : [
+          for job in try(pipeline.jobs, []) : alltrue([
+            for rule in coalesce(try(job.rules, null), []) :
+            try(rule.if, null) != null ||
+            try(rule.when, null) != null ||
+            try(rule.allow_failure, null) != null ||
+            length(coalesce(try(rule.changes, null), [])) > 0 ||
+            length(coalesce(try(rule.exists, null), [])) > 0 ||
+            try(rule.start_in, null) != null
+          ])
+        ]
+      ])
+    ]))
+    error_message = "gitlab_projects[].gitlab_ci_pipelines[].jobs[].rules[] must set at least one supported rule field."
   }
 
   validation {
