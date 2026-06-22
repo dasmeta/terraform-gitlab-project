@@ -188,9 +188,9 @@ module "gitlab" {
               variables = {
                 registry_host    = "docker.io"
                 image_repository = "dasmeta/test"
-                image_tags      = ["prod-$CI_COMMIT_SHORT_SHA"]
-                dockerfile_path = "Dockerfile"
-                build_context   = "."
+                image_tags       = ["prod-$CI_COMMIT_SHORT_SHA"]
+                dockerfile_path  = "Dockerfile"
+                build_context    = "."
               }
             },
           ]

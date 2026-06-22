@@ -176,8 +176,8 @@ deploy-prod:
 
 | Name | Version |
 |------|---------|
-| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | ~> 19.0 |
-| <a name="provider_null"></a> [null](#provider\_null) | ~> 3.2 |
+| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | 19.1.0 |
+| <a name="provider_null"></a> [null](#provider\_null) | 3.3.0 |
 
 ## Modules
 
