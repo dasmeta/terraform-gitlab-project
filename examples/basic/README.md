@@ -20,7 +20,9 @@ implicit single-group fallback described in the root README.
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | >= 18.8.2 |
+| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | ~> 19.0 |
+| <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.17.0 |
+| <a name="requirement_null"></a> [null](#requirement\_null) | >= 3.2.0 |
 
 ## Providers
 
@@ -38,7 +40,10 @@ No resources.
 
 ## Inputs
 
-No inputs.
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_kubeconfig_context"></a> [kubeconfig\_context](#input\_kubeconfig\_context) | Kubeconfig context used by the Helm provider. Set to null to use the current context. | `string` | `"kind-local"` | no |
+| <a name="input_kubeconfig_path"></a> [kubeconfig\_path](#input\_kubeconfig\_path) | Kubeconfig path used by the Helm provider to install the GitLab Agent chart. | `string` | `"~/.kube/config"` | no |
 
 ## Outputs
 

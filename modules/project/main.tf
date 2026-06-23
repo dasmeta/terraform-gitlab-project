@@ -62,11 +62,26 @@ resource "gitlab_branch_protection" "branch" {
   project = gitlab_project.this[each.value.project_name].id
   branch  = each.value.branch
 
-  merge_access_level           = each.value.merge_access_level
-  push_access_level            = each.value.push_access_level
   allow_force_push             = each.value.allow_force_push
   code_owner_approval_required = each.value.code_owner_approval_required
-  unprotect_access_level       = each.value.unprotect_access_level
+
+  allowed_to_merge = [
+    {
+      access_level = each.value.merge_access_level
+    }
+  ]
+
+  allowed_to_push = [
+    {
+      access_level = each.value.push_access_level
+    }
+  ]
+
+  allowed_to_unprotect = [
+    {
+      access_level = each.value.unprotect_access_level
+    }
+  ]
 }
 
 resource "gitlab_project_approval_rule" "this" {
