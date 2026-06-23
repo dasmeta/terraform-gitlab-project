@@ -64,51 +64,73 @@ variable "global_env_variables" {
 
 variable "dynamic_environments_project" {
   type = object({
-    enabled                = optional(bool, false)                                      # Create and configure the central dynamic environments project
-    name                   = optional(string)                                           # Central project name; required when enabled
-    description            = optional(string, "Dynamic environments orchestration")     # Central project description
-    visibility_level       = optional(string, "private")                                # private | internal | public
-    default_branch         = optional(string, "main")                                   # Target and default branch for generated configuration
-    initialize_with_readme = optional(bool, true)                                       # Initialize the central project with a README
-    namespace_id           = optional(number)                                           # Explicit GitLab namespace id for the central project
-    group_key              = optional(string)                                           # Resolve namespace through gitlab_groups[].key
-    source_branch          = optional(string, "feature/dynamic-environments")           # Source branch used for generated orchestration files
-    mr_title               = optional(string, "Add dynamic environments orchestration") # Merge request title for orchestration changes
-    gitlab_api_url         = optional(string, "https://gitlab.com/api/v4")              # GitLab API base URL used by generated jobs
-    gitlab_agent_path      = optional(string)                                           # GitLab Agent context path used by generated CI
-    cluster_name           = optional(string, "eks-dev")                                # Kubernetes cluster name used by deployment jobs
-    deploy_mode            = optional(string, "aws_eks")                                # Deployment integration mode: aws_eks | gitlab_agent
-    runner_tags            = optional(list(string), ["k8s-runner"])                     # GitLab runner tags assigned to generated jobs
-    gitlab_agent = optional(object({                                                    # GitLab Agent configuration, registration, installation, and access settings
-      enabled             = optional(bool, false)                                       # Generate and optionally register GitLab Agent configuration
-      name                = optional(string)                                            # Agent name; falls back to cluster_name when omitted
-      config_project_name = optional(string)                                            # Managed project name that stores the agent configuration
-      config_project_id   = optional(string)                                            # Existing project id that stores the agent configuration
-      config_project_path = optional(string)                                            # Full namespace/project path for an existing config project
-      source_branch       = optional(string, "feature/gitlab-agent-config")             # Source branch for generated agent configuration
-      target_branch       = optional(string, "main")                                    # Merge request target branch for agent configuration
-      mr_title            = optional(string, "Add GitLab Agent configuration")          # Merge request title for agent configuration changes
-      config_file_path    = optional(string)                                            # Repository path for the generated agent config.yaml
-      register_agent      = optional(bool, false)                                       # Register the agent and create an authentication token
-      token_name          = optional(string)                                            # Name assigned to the generated agent token
-      token_description   = optional(string)                                            # Description assigned to the generated agent token
-      install = optional(object({                                                       # Helm installation settings for the GitLab Agent
-        enabled          = optional(bool, false)                                        # Install the GitLab Agent Helm chart
-        release_name     = optional(string)                                             # Helm release name for the agent installation
-        namespace        = optional(string)                                             # Kubernetes namespace for the Helm release
-        create_namespace = optional(bool, true)                                         # Create the Kubernetes namespace when missing
-        repository       = optional(string, "https://charts.gitlab.io")                 # Helm repository containing the agent chart
-        chart            = optional(string, "gitlab-agent")                             # Helm chart name
-        chart_version    = optional(string)                                             # Helm chart version; provider default when omitted
-        kas_address      = optional(string, "wss://kas.gitlab.com")                     # GitLab Kubernetes Agent Server WebSocket address
-        timeout          = optional(number, 300)                                        # Helm operation timeout in seconds
-        wait             = optional(bool, true)                                         # Wait for Helm resources to become ready
-        atomic           = optional(bool, false)                                        # Roll back the Helm release when installation fails
-        values           = optional(list(string), [])                                   # Additional YAML values passed to the Helm release
-        set_values = optional(list(object({                                             # Additional individual Helm values
-          name  = string                                                                # Helm value key passed through a set block
-          value = string                                                                # Helm value assigned to the key
-          type  = optional(string)                                                      # Helm set value type, such as string or auto
+    enabled                = optional(bool, false)                                                   # Create and configure the central dynamic environments project
+    name                   = optional(string)                                                        # Central project name; required when enabled
+    description            = optional(string, "Dynamic environments orchestration")                  # Central project description
+    visibility_level       = optional(string, "private")                                             # private | internal | public
+    default_branch         = optional(string, "main")                                                # Target and default branch for generated configuration
+    initialize_with_readme = optional(bool, true)                                                    # Initialize the central project with a README
+    namespace_id           = optional(number)                                                        # Explicit GitLab namespace id for the central project
+    group_key              = optional(string)                                                        # Resolve namespace through gitlab_groups[].key
+    source_branch          = optional(string, "feature/dynamic-environments")                        # Source branch used for generated orchestration files
+    mr_title               = optional(string, "Add dynamic environments orchestration")              # Merge request title for orchestration changes
+    gitlab_api_url         = optional(string, "https://gitlab.com/api/v4")                           # GitLab API base URL used by generated jobs
+    gitlab_agent_path      = optional(string)                                                        # GitLab Agent context path used by generated CI
+    cluster_name           = optional(string, "eks-dev")                                             # Kubernetes cluster name used by deployment jobs
+    deploy_mode            = optional(string, "aws_eks")                                             # Deployment integration mode: aws_eks | gitlab_agent
+    runner_tags            = optional(list(string), ["k8s-runner"])                                  # GitLab runner tags assigned to generated jobs
+    ci_config = optional(object({                                                                    # Runtime settings for generated central GitLab CI jobs
+      deploy_image                   = optional(string, "alpine/k8s:1.20.15")                        # Container image used by the dynamic deployment job
+      cleanup_image                  = optional(string, "alpine/k8s:1.20.15")                        # Container image used by the dynamic cleanup job
+      placeholder_image              = optional(string, "alpine:latest")                             # Container image used by the merge-request placeholder job
+      alpine_packages                = optional(list(string), ["python3", "py3-pip", "git", "bash"]) # Alpine packages installed before deployment
+      python_packages                = optional(list(string), ["pyyaml"])                            # Python packages installed before deployment
+      migration_job_name             = optional(string, "db-migration")                              # Kubernetes Job name used for database migration handling
+      migration_timeout              = optional(string, "600s")                                      # kubectl wait timeout for the migration job
+      aws_access_key_id_variable     = optional(string, "AWS_ACCESS_KEY_DEV_ID")                     # GitLab CI variable containing the AWS access key id
+      aws_secret_access_key_variable = optional(string, "AWS_SECRET_ACCESS_DEV_KEY")                 # GitLab CI variable containing the AWS secret access key
+    }), {})
+    e2e_config = optional(object({           # Optional downstream E2E pipeline trigger
+      enabled   = optional(bool, false)      # Emit the downstream E2E trigger job
+      project   = optional(string)           # Full GitLab project path for downstream E2E tests
+      branch    = optional(string, "main")   # Branch used by the downstream E2E pipeline
+      strategy  = optional(string, "depend") # GitLab trigger strategy: depend | mirror
+      variables = optional(map(string), {})  # Overrides merged into the standard downstream E2E variables
+      rules = optional(list(object({         # Additional rules appended to the standard downstream E2E rules
+        if   = string                        # GitLab CI rule expression
+        when = optional(string)              # Optional GitLab CI rule action
+      })), [])
+    }), {})
+    gitlab_agent = optional(object({                                           # GitLab Agent configuration, registration, installation, and access settings
+      enabled             = optional(bool, false)                              # Generate and optionally register GitLab Agent configuration
+      name                = optional(string)                                   # Agent name; falls back to cluster_name when omitted
+      config_project_name = optional(string)                                   # Managed project name that stores the agent configuration
+      config_project_id   = optional(string)                                   # Existing project id that stores the agent configuration
+      config_project_path = optional(string)                                   # Full namespace/project path for an existing config project
+      source_branch       = optional(string, "feature/gitlab-agent-config")    # Source branch for generated agent configuration
+      target_branch       = optional(string, "main")                           # Merge request target branch for agent configuration
+      mr_title            = optional(string, "Add GitLab Agent configuration") # Merge request title for agent configuration changes
+      config_file_path    = optional(string)                                   # Repository path for the generated agent config.yaml
+      register_agent      = optional(bool, false)                              # Register the agent and create an authentication token
+      token_name          = optional(string)                                   # Name assigned to the generated agent token
+      token_description   = optional(string)                                   # Description assigned to the generated agent token
+      install = optional(object({                                              # Helm installation settings for the GitLab Agent
+        enabled          = optional(bool, false)                               # Install the GitLab Agent Helm chart
+        release_name     = optional(string)                                    # Helm release name for the agent installation
+        namespace        = optional(string)                                    # Kubernetes namespace for the Helm release
+        create_namespace = optional(bool, true)                                # Create the Kubernetes namespace when missing
+        repository       = optional(string, "https://charts.gitlab.io")        # Helm repository containing the agent chart
+        chart            = optional(string, "gitlab-agent")                    # Helm chart name
+        chart_version    = optional(string)                                    # Helm chart version; provider default when omitted
+        kas_address      = optional(string, "wss://kas.gitlab.com")            # GitLab Kubernetes Agent Server WebSocket address
+        timeout          = optional(number, 300)                               # Helm operation timeout in seconds
+        wait             = optional(bool, true)                                # Wait for Helm resources to become ready
+        atomic           = optional(bool, false)                               # Roll back the Helm release when installation fails
+        values           = optional(list(string), [])                          # Additional YAML values passed to the Helm release
+        set_values = optional(list(object({                                    # Additional individual Helm values
+          name  = string                                                       # Helm value key passed through a set block
+          value = string                                                       # Helm value assigned to the key
+          type  = optional(string)                                             # Helm set value type, such as string or auto
         })), [])
       }), {})
       ci_access = optional(object({                        # CI/CD identities allowed to use the agent
@@ -231,6 +253,55 @@ variable "dynamic_environments_project" {
       try(var.dynamic_environments_project.deploy_mode, "aws_eks")
     )
     error_message = "dynamic_environments_project.deploy_mode must be one of: aws_eks, gitlab_agent."
+  }
+
+  validation {
+    condition = alltrue(concat(
+      [
+        for value in [
+          try(var.dynamic_environments_project.ci_config.deploy_image, "alpine/k8s:1.20.15"),
+          try(var.dynamic_environments_project.ci_config.cleanup_image, "alpine/k8s:1.20.15"),
+          try(var.dynamic_environments_project.ci_config.placeholder_image, "alpine:latest"),
+          try(var.dynamic_environments_project.ci_config.migration_job_name, "db-migration"),
+          try(var.dynamic_environments_project.ci_config.migration_timeout, "600s"),
+          try(var.dynamic_environments_project.ci_config.aws_access_key_id_variable, "AWS_ACCESS_KEY_DEV_ID"),
+          try(var.dynamic_environments_project.ci_config.aws_secret_access_key_variable, "AWS_SECRET_ACCESS_DEV_KEY"),
+        ] : length(trimspace(value)) > 0
+      ],
+      [
+        for value in concat(
+          try(var.dynamic_environments_project.ci_config.alpine_packages, []),
+          try(var.dynamic_environments_project.ci_config.python_packages, [])
+        ) : length(trimspace(value)) > 0
+      ]
+    ))
+    error_message = "dynamic_environments_project.ci_config string values and package names must be non-empty."
+  }
+
+  validation {
+    condition = (
+      !try(var.dynamic_environments_project.e2e_config.enabled, false) ||
+      length(trimspace(try(var.dynamic_environments_project.e2e_config.project, ""))) > 0
+    )
+    error_message = "dynamic_environments_project.e2e_config.project must be non-empty when E2E is enabled."
+  }
+
+  validation {
+    condition = (
+      length(trimspace(try(var.dynamic_environments_project.e2e_config.branch, "main"))) > 0 &&
+      contains(["depend", "mirror"], try(var.dynamic_environments_project.e2e_config.strategy, "depend"))
+    )
+    error_message = "dynamic_environments_project.e2e_config.branch must be non-empty and strategy must be one of: depend, mirror."
+  }
+
+  validation {
+    condition = alltrue([
+      for rule in try(var.dynamic_environments_project.e2e_config.rules, []) : (
+        length(trimspace(rule.if)) > 0 &&
+        (try(rule.when, null) == null || length(trimspace(rule.when)) > 0)
+      )
+    ])
+    error_message = "dynamic_environments_project.e2e_config.rules entries must contain a non-empty if expression and a non-empty when value when provided."
   }
 
   validation {

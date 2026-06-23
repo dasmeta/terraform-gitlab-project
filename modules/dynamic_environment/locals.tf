@@ -5,6 +5,58 @@ locals {
   dynamic_environments_runner_tags     = try(var.dynamic_environments_project.runner_tags, ["k8s-runner"])
   dynamic_environments_runner_tag_yaml = join("\n", [for tag in local.dynamic_environments_runner_tags : "    - ${tag}"])
   dynamic_environments_deploy_mode     = try(var.dynamic_environments_project.deploy_mode, "aws_eks")
+  dynamic_environments_ci_config = {
+    deploy_image                   = try(var.dynamic_environments_project.ci_config.deploy_image, "alpine/k8s:1.20.15")
+    cleanup_image                  = try(var.dynamic_environments_project.ci_config.cleanup_image, "alpine/k8s:1.20.15")
+    placeholder_image              = try(var.dynamic_environments_project.ci_config.placeholder_image, "alpine:latest")
+    alpine_packages                = try(var.dynamic_environments_project.ci_config.alpine_packages, ["python3", "py3-pip", "git", "bash"])
+    python_packages                = try(var.dynamic_environments_project.ci_config.python_packages, ["pyyaml"])
+    migration_job_name             = try(var.dynamic_environments_project.ci_config.migration_job_name, "db-migration")
+    migration_timeout              = try(var.dynamic_environments_project.ci_config.migration_timeout, "600s")
+    aws_access_key_id_variable     = try(var.dynamic_environments_project.ci_config.aws_access_key_id_variable, "AWS_ACCESS_KEY_DEV_ID")
+    aws_secret_access_key_variable = try(var.dynamic_environments_project.ci_config.aws_secret_access_key_variable, "AWS_SECRET_ACCESS_DEV_KEY")
+  }
+  dynamic_environments_e2e_default_variables = {
+    E2E_DYNAMIC_STACK = "true"
+  }
+  dynamic_environments_e2e_default_rules = [
+    {
+      if   = "$REMOVE_DYNAMIC"
+      when = "never"
+    },
+    {
+      if   = "$CI_PIPELINE_SOURCE == \"merge_request_event\""
+      when = "never"
+    },
+    {
+      if = "$CI_PIPELINE_SOURCE == \"pipeline\""
+    },
+    {
+      if = "$CI_PIPELINE_SOURCE == \"parent_pipeline\""
+    },
+    {
+      if = "$CI_PIPELINE_SOURCE == \"trigger\""
+    },
+  ]
+  dynamic_environments_e2e_config = {
+    enabled  = try(var.dynamic_environments_project.e2e_config.enabled, false)
+    project  = try(var.dynamic_environments_project.e2e_config.project, null)
+    branch   = try(var.dynamic_environments_project.e2e_config.branch, "main")
+    strategy = try(var.dynamic_environments_project.e2e_config.strategy, "depend")
+    variables = merge(
+      local.dynamic_environments_e2e_default_variables,
+      try(var.dynamic_environments_project.e2e_config.variables, {})
+    )
+    rules = concat(
+      local.dynamic_environments_e2e_default_rules,
+      [
+        for rule in try(var.dynamic_environments_project.e2e_config.rules, []) : merge(
+          { if = rule.if },
+          try(rule.when, null) != null ? { when = rule.when } : {}
+        )
+      ]
+    )
+  }
 
   dynamic_environments_project_id   = local.dynamic_environments_project_enabled ? gitlab_project.dynamic_environment["central"].id : null
   dynamic_environments_project_path = local.dynamic_environments_project_enabled ? gitlab_project.dynamic_environment["central"].path_with_namespace : null
@@ -80,22 +132,299 @@ locals {
   dynamic_environments_clean_stack_py = templatefile("${path.module}/templates/clean_stack.py.tftpl", {
     cleanup_config = local.dynamic_environments_cleanup_config
   })
-  dynamic_environments_gitlab_ci_yml = templatefile("${path.module}/templates/central.gitlab-ci.yml.tftpl", {
-    aws_region            = coalesce(try(var.dynamic_environments_project.applications.defaults.aws_region, null), "us-east-2")
-    cluster_name          = try(var.dynamic_environments_project.cluster_name, "eks-dev")
-    secret_env            = coalesce(try(var.dynamic_environments_project.applications.defaults.secret_env, null), "dev")
-    dynamic_base_domain   = coalesce(try(var.dynamic_environments_project.applications.defaults.dynamic_base_domain, null), "dev.example.com")
-    dynamic_env_release   = coalesce(try(var.dynamic_environments_project.applications.defaults.dynamic_env_release, null), "app")
-    namespace_prefix      = local.dynamic_environments_deploy_config.namespace_prefix
-    helm_repo_name        = local.dynamic_environments_deploy_config.helm_repo_name
-    helm_repo_url         = local.dynamic_environments_deploy_config.helm_repo_url
-    work_dir              = local.dynamic_environments_deploy_config.work_dir
-    gitlab_api_url        = local.dynamic_environments_deploy_config.gitlab_api_url
-    gitlab_clone_base_url = local.dynamic_environments_deploy_config.gitlab_clone_base_url
-    gitlab_agent_path     = local.dynamic_environments_agent_path
-    deploy_mode           = local.dynamic_environments_deploy_mode
-    runner_tags           = local.dynamic_environments_runner_tags
-  })
+  dynamic_environments_pipeline_rules = [
+    {
+      if   = "$REMOVE_DYNAMIC"
+      when = "never"
+    },
+    {
+      if   = "$CI_PIPELINE_SOURCE == \"merge_request_event\""
+      when = "never"
+    },
+    {
+      if = "$CI_PIPELINE_SOURCE == \"pipeline\""
+    },
+    {
+      if = "$CI_PIPELINE_SOURCE == \"parent_pipeline\""
+    },
+    {
+      if = "$CI_PIPELINE_SOURCE == \"trigger\""
+    },
+    {
+      if = "$CI_PIPELINE_SOURCE == \"web\""
+    },
+  ]
+  dynamic_environments_deploy_before_script = concat(
+    length(local.dynamic_environments_ci_config.alpine_packages) > 0 ? [
+      "apk add --no-cache ${join(" ", local.dynamic_environments_ci_config.alpine_packages)}"
+    ] : [],
+    length(local.dynamic_environments_ci_config.python_packages) > 0 ? [
+      "pip3 install --no-cache-dir ${join(" ", local.dynamic_environments_ci_config.python_packages)}"
+    ] : [],
+    local.dynamic_environments_deploy_mode == "gitlab_agent" ? [
+      "kubectl config use-context \"$GITLAB_AGENT_PATH\""
+      ] : [
+      format("export AWS_ACCESS_KEY_ID=$%s", local.dynamic_environments_ci_config.aws_access_key_id_variable),
+      format("export AWS_SECRET_ACCESS_KEY=$%s", local.dynamic_environments_ci_config.aws_secret_access_key_variable),
+      "aws --region $AWS_REGION eks update-kubeconfig --name $CLUSTER_NAME",
+    ]
+  )
+  dynamic_environments_gitlab_ci = merge(
+    {
+      stages = concat(
+        ["deploy"],
+        local.dynamic_environments_e2e_config.enabled ? ["e2e-test"] : [],
+        ["remove"]
+      )
+      variables = merge(
+        {
+          AWS_REGION            = coalesce(try(var.dynamic_environments_project.applications.defaults.aws_region, null), "us-east-2")
+          CLUSTER_NAME          = try(var.dynamic_environments_project.cluster_name, "eks-dev")
+          SECRET_ENV            = coalesce(try(var.dynamic_environments_project.applications.defaults.secret_env, null), "dev")
+          DYNAMIC_NAMESPACE     = "${local.dynamic_environments_deploy_config.namespace_prefix}$CI_PIPELINE_ID"
+          DYNAMIC_BASE_DOMAIN   = coalesce(try(var.dynamic_environments_project.applications.defaults.dynamic_base_domain, null), "dev.example.com")
+          DYNAMIC_ENV_RELEASE   = coalesce(try(var.dynamic_environments_project.applications.defaults.dynamic_env_release, null), "app")
+          GITLAB_AGENT_PATH     = local.dynamic_environments_agent_path
+          NAMESPACE_PREFIX      = local.dynamic_environments_deploy_config.namespace_prefix
+          HELM_REPO_NAME        = local.dynamic_environments_deploy_config.helm_repo_name
+          HELM_REPO_URL         = local.dynamic_environments_deploy_config.helm_repo_url
+          WORK_DIR              = local.dynamic_environments_deploy_config.work_dir
+          GITLAB_API_URL        = local.dynamic_environments_deploy_config.gitlab_api_url
+          GITLAB_CLONE_BASE_URL = local.dynamic_environments_deploy_config.gitlab_clone_base_url
+        },
+        local.dynamic_environments_e2e_config.enabled ? {
+          E2E_PROJECT = local.dynamic_environments_e2e_config.project
+          E2E_BRANCH  = local.dynamic_environments_e2e_config.branch
+        } : {}
+      )
+      ".deploy-dynamic" = {
+        stage = "deploy"
+        image = {
+          name       = local.dynamic_environments_ci_config.deploy_image
+          entrypoint = ["/bin/sh", "-c"]
+        }
+        tags = local.dynamic_environments_runner_tags
+        environment = {
+          name    = "review/$DYNAMIC_NAMESPACE"
+          url     = "https://$DYNAMIC_NAMESPACE.$DYNAMIC_BASE_DOMAIN"
+          on_stop = "remove-dynamic-stack"
+          kubernetes = {
+            agent = "$GITLAB_AGENT_PATH"
+            dashboard = {
+              namespace = "$DYNAMIC_NAMESPACE"
+            }
+          }
+        }
+        before_script = local.dynamic_environments_deploy_before_script
+        script = [
+          "kubectl delete job ${local.dynamic_environments_ci_config.migration_job_name} -n $DYNAMIC_NAMESPACE --ignore-not-found",
+          "python3 scripts/deploy_stack.py",
+          "kubectl wait --for=condition=complete --timeout=${local.dynamic_environments_ci_config.migration_timeout} job/${local.dynamic_environments_ci_config.migration_job_name} -n $DYNAMIC_NAMESPACE || true",
+        ]
+      }
+      "deploy-dynamic-stack" = {
+        extends = ".deploy-dynamic"
+        rules   = local.dynamic_environments_pipeline_rules
+      }
+      mr_pipeline_placeholder = {
+        stage = "deploy"
+        image = local.dynamic_environments_ci_config.placeholder_image
+        tags  = local.dynamic_environments_runner_tags
+        script = [
+          "echo \"MR pipeline noop. Real deploys run downstream from service MRs.\""
+        ]
+        rules = [
+          {
+            if = "$CI_PIPELINE_SOURCE == \"merge_request_event\""
+          }
+        ]
+      }
+      "remove-dynamic-stack" = {
+        stage = "remove"
+        image = {
+          name       = local.dynamic_environments_ci_config.cleanup_image
+          entrypoint = ["/bin/sh", "-c"]
+        }
+        tags = local.dynamic_environments_runner_tags
+        environment = {
+          name   = "review/$DYNAMIC_NAMESPACE"
+          action = "stop"
+          kubernetes = {
+            agent = "$GITLAB_AGENT_PATH"
+            dashboard = {
+              namespace = "$DYNAMIC_NAMESPACE"
+            }
+          }
+        }
+        script = [
+          "python3 scripts/clean_stack.py --namespace $DYNAMIC_NAMESPACE",
+          "kubectl delete namespace \"$DYNAMIC_NAMESPACE\" --ignore-not-found=true",
+        ]
+        rules = [
+          {
+            if = "$REMOVE_DYNAMIC"
+          }
+        ]
+      }
+    },
+    local.dynamic_environments_e2e_config.enabled ? {
+      e2e_tests = {
+        stage = "e2e-test"
+        trigger = {
+          project  = "$E2E_PROJECT"
+          branch   = "$E2E_BRANCH"
+          strategy = local.dynamic_environments_e2e_config.strategy
+        }
+        variables = local.dynamic_environments_e2e_config.variables
+        rules     = local.dynamic_environments_e2e_config.rules
+      }
+    } : {}
+  )
+  dynamic_environments_variables_yaml = join("\n", concat(
+    ["variables:"],
+    [
+      for key in [
+        "AWS_REGION",
+        "CLUSTER_NAME",
+        "SECRET_ENV",
+        "DYNAMIC_NAMESPACE",
+        "DYNAMIC_BASE_DOMAIN",
+        "DYNAMIC_ENV_RELEASE",
+        "GITLAB_AGENT_PATH",
+        "NAMESPACE_PREFIX",
+        "HELM_REPO_NAME",
+        "HELM_REPO_URL",
+        "WORK_DIR",
+        "GITLAB_API_URL",
+        "GITLAB_CLONE_BASE_URL",
+      ] : "  ${key}: ${local.dynamic_environments_gitlab_ci.variables[key]}"
+    ],
+    local.dynamic_environments_e2e_config.enabled ? [
+      "  E2E_PROJECT: ${local.dynamic_environments_gitlab_ci.variables.E2E_PROJECT}",
+      "  E2E_BRANCH: ${local.dynamic_environments_gitlab_ci.variables.E2E_BRANCH}",
+    ] : []
+  ))
+  dynamic_environments_tags_yaml = join("\n", [
+    for tag in local.dynamic_environments_runner_tags : "    - ${tag}"
+  ])
+  dynamic_environments_pipeline_rules_yaml = join("\n", flatten([
+    for rule in local.dynamic_environments_pipeline_rules : concat(
+      ["    - if: ${rule.if}"],
+      try(rule.when, null) != null ? ["      when: ${rule.when}"] : []
+    )
+  ]))
+  dynamic_environments_e2e_rules_yaml = join("\n", flatten([
+    for rule in local.dynamic_environments_e2e_config.rules : concat(
+      ["    - if: ${rule.if}"],
+      try(rule.when, null) != null ? ["      when: ${rule.when}"] : []
+    )
+  ]))
+  dynamic_environments_e2e_variables_yaml = join("\n", [
+    for key in sort(keys(local.dynamic_environments_e2e_config.variables)) :
+    "    ${key}: ${key == "E2E_DYNAMIC_STACK" ? "\"${local.dynamic_environments_e2e_config.variables[key]}\"" : local.dynamic_environments_e2e_config.variables[key]}"
+  ])
+  dynamic_environments_deploy_job_yaml = join("\n", concat(
+    [
+      ".deploy-dynamic:",
+      "  stage: deploy",
+      "  image:",
+      "    name: ${local.dynamic_environments_ci_config.deploy_image}",
+      "    entrypoint: [\"/bin/sh\", \"-c\"]",
+      "  tags:",
+      local.dynamic_environments_tags_yaml,
+      "  environment:",
+      "    name: review/$DYNAMIC_NAMESPACE",
+      "    url: https://$DYNAMIC_NAMESPACE.$DYNAMIC_BASE_DOMAIN",
+      "    on_stop: remove-dynamic-stack",
+      "    kubernetes:",
+      "      agent: $GITLAB_AGENT_PATH",
+      "      dashboard:",
+      "        namespace: $DYNAMIC_NAMESPACE",
+      "  before_script:",
+    ],
+    [for command in local.dynamic_environments_deploy_before_script : "    - ${command}"],
+    [
+      "  script:",
+      "    - kubectl delete job ${local.dynamic_environments_ci_config.migration_job_name} -n $DYNAMIC_NAMESPACE --ignore-not-found",
+      "    - python3 scripts/deploy_stack.py",
+      "    - kubectl wait --for=condition=complete --timeout=${local.dynamic_environments_ci_config.migration_timeout} job/${local.dynamic_environments_ci_config.migration_job_name} -n $DYNAMIC_NAMESPACE || true",
+    ]
+  ))
+  dynamic_environments_deploy_stack_job_yaml = join("\n", [
+    "deploy-dynamic-stack:",
+    "  extends: .deploy-dynamic",
+    "  rules:",
+    local.dynamic_environments_pipeline_rules_yaml,
+  ])
+  dynamic_environments_placeholder_job_yaml = join("\n", [
+    "mr_pipeline_placeholder:",
+    "  stage: deploy",
+    "  image: ${local.dynamic_environments_ci_config.placeholder_image}",
+    "  tags:",
+    local.dynamic_environments_tags_yaml,
+    "  script:",
+    "    - echo \"MR pipeline noop. Real deploys run downstream from service MRs.\"",
+    "  rules:",
+    "    - if: $CI_PIPELINE_SOURCE == \"merge_request_event\"",
+  ])
+  dynamic_environments_e2e_job_yaml = join("\n", [
+    "e2e_tests:",
+    "  stage: e2e-test",
+    "  trigger:",
+    "    project: $E2E_PROJECT",
+    "    branch: $E2E_BRANCH",
+    "    strategy: ${local.dynamic_environments_e2e_config.strategy}",
+    "  variables:",
+    local.dynamic_environments_e2e_variables_yaml,
+    "  rules:",
+    local.dynamic_environments_e2e_rules_yaml,
+  ])
+  dynamic_environments_remove_job_yaml = join("\n", [
+    "remove-dynamic-stack:",
+    "  stage: remove",
+    "  image:",
+    "    name: ${local.dynamic_environments_ci_config.cleanup_image}",
+    "    entrypoint: [\"/bin/sh\", \"-c\"]",
+    "  tags:",
+    local.dynamic_environments_tags_yaml,
+    "  environment:",
+    "    name: review/$DYNAMIC_NAMESPACE",
+    "    action: stop",
+    "    kubernetes:",
+    "      agent: $GITLAB_AGENT_PATH",
+    "      dashboard:",
+    "        namespace: $DYNAMIC_NAMESPACE",
+    "  script:",
+    "    - python3 scripts/clean_stack.py --namespace $DYNAMIC_NAMESPACE",
+    "    - kubectl delete namespace \"$DYNAMIC_NAMESPACE\" --ignore-not-found=true",
+    "  rules:",
+    "    - if: $REMOVE_DYNAMIC",
+  ])
+  dynamic_environments_gitlab_ci_sections = concat(
+    [
+      join("\n", concat(
+        ["stages:"],
+        [for stage in local.dynamic_environments_gitlab_ci.stages : "  - ${stage}"]
+      )),
+      local.dynamic_environments_variables_yaml,
+      local.dynamic_environments_deploy_job_yaml,
+      local.dynamic_environments_deploy_stack_job_yaml,
+      local.dynamic_environments_placeholder_job_yaml,
+    ],
+    local.dynamic_environments_e2e_config.enabled ? [
+      local.dynamic_environments_e2e_job_yaml
+    ] : [],
+    [
+      local.dynamic_environments_remove_job_yaml
+    ]
+  )
+  dynamic_environments_gitlab_ci_yml = join("\n", [
+    "# GENERATED FILE - DO NOT EDIT",
+    "# Managed by Terraform. Manual changes may be overwritten.",
+    "# Update the source Terraform configuration instead.",
+    "",
+    join("\n\n", local.dynamic_environments_gitlab_ci_sections),
+  ])
 
   dynamic_environments_managed_directory_readme = <<-MD
     # Terraform-managed directory

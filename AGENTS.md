@@ -33,5 +33,5 @@ Terraform module repository (HCL) with YAML, JSON, shell, and Node-based reposit
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/006-merge-requests-template/plan.md`
+`specs/011-parameterize-dynamic-ci/plan.md`
 <!-- SPECKIT END -->

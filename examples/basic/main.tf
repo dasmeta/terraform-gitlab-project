@@ -49,6 +49,16 @@ module "gitlab" {
     cluster_name   = "kind-local"
     deploy_mode    = "gitlab_agent"
 
+    e2e_config = {
+      enabled = true
+      project = "terraform-gitlab-module/e2e-tests"
+      variables = {
+        APP_BASE_URL  = "https://app-$DYNAMIC_ENV_HOST"
+        CUSTOM_WS_URL = "wss://app-$DYNAMIC_ENV_HOST/ws"
+        DATABASE      = "postgresql://postgres:postgres@postgres-postgresql.$DYNAMIC_NAMESPACE.svc.cluster.local:5432/postgres"
+      }
+    }
+
     gitlab_agent = {
       enabled             = true
       name                = "eks-agent"
