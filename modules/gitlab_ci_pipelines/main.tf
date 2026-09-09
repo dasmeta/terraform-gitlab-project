@@ -1,4 +1,16 @@
 locals {
+  default_stop_environment_rules = [
+    {
+      if            = null
+      when          = "manual"
+      allow_failure = true
+      changes       = null
+      exists        = null
+      start_in      = null
+    }
+  ]
+  empty_ci_rule_lines = tolist(slice([""], 0, 0))
+
   pipeline_types = {
     build_ecr = {
       file_path      = "ci-pipelines/build-gitlab.ci.yaml"
@@ -8,7 +20,7 @@ locals {
 
       include = {
         project = "das-meta/gitlab-ci-templates"
-        ref     = "DMVP-1150"
+        ref     = "1.1.0"
         file    = "/ci-templates/templates/build/ecr-build.gitlab-ci.yml"
       }
 
@@ -47,7 +59,7 @@ locals {
 
       include = {
         project = "das-meta/gitlab-ci-templates"
-        ref     = "DMVP-1150"
+        ref     = "1.1.0"
         file    = "/ci-templates/templates/build/onprem-build.gitlab-ci.yml"
       }
 
@@ -86,7 +98,7 @@ locals {
 
       include = {
         project = "das-meta/gitlab-ci-templates"
-        ref     = "DMVP-1150"
+        ref     = "1.1.0"
         file    = "/ci-templates/templates/deploy/agent-deploy.gitlab-ci.yml"
       }
 
@@ -161,8 +173,90 @@ locals {
           for job in pipeline.jobs : {
             name    = job.name
             extends = local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].extends
-            rules   = coalesce(try(job.rules, null), [])
-            variables = merge(
+            rules = try(length(job.rules), 0) > 0 ? tolist(flatten([
+              for rule in job.rules : concat(
+                try(rule.if, null) == null ? [] : ["    - if: '${replace(rule.if, "'", "''")}'"],
+                try(rule.if, null) != null || try(rule.when, null) == null ? [] : ["    - when: ${jsonencode(rule.when)}"],
+                try(rule.if, null) == null || try(rule.when, null) == null ? [] : ["      when: ${jsonencode(rule.when)}"],
+                try(rule.allow_failure, null) == null ? [] : [
+                  try(rule.if, null) != null || try(rule.when, null) != null
+                  ? "      allow_failure: ${jsonencode(rule.allow_failure)}"
+                  : "    - allow_failure: ${jsonencode(rule.allow_failure)}"
+                ],
+                length(coalesce(try(rule.changes, null), [])) == 0 ? [] : concat(
+                  [
+                    try(rule.if, null) != null || try(rule.when, null) != null || try(rule.allow_failure, null) != null
+                    ? "      changes:"
+                    : "    - changes:"
+                  ],
+                  [for path in coalesce(try(rule.changes, null), []) : "        - ${jsonencode(path)}"]
+                ),
+                length(coalesce(try(rule.exists, null), [])) == 0 ? [] : concat(
+                  [
+                    try(rule.if, null) != null || try(rule.when, null) != null || try(rule.allow_failure, null) != null || length(coalesce(try(rule.changes, null), [])) > 0
+                    ? "      exists:"
+                    : "    - exists:"
+                  ],
+                  [for path in coalesce(try(rule.exists, null), []) : "        - ${jsonencode(path)}"]
+                ),
+                try(rule.start_in, null) == null ? [] : [
+                  try(rule.if, null) != null || try(rule.when, null) != null || try(rule.allow_failure, null) != null || length(coalesce(try(rule.changes, null), [])) > 0 || length(coalesce(try(rule.exists, null), [])) > 0
+                  ? "      start_in: ${jsonencode(rule.start_in)}"
+                  : "    - start_in: ${jsonencode(rule.start_in)}"
+                ]
+              )
+            ])) : local.empty_ci_rule_lines
+            stop_environment = {
+              enabled = pipeline.type == "deploy_agent" ? coalesce(
+                try(job.stop_environment.enabled, null),
+                try(pipeline.stop_environment.enabled, null),
+                false
+              ) : false
+              job_name = coalesce(
+                try(job.stop_environment.job_name, null),
+                try(pipeline.stop_environment.job_name, null),
+                "stop-${job.name}"
+              )
+              extends = coalesce(
+                try(job.stop_environment.extends, null),
+                try(pipeline.stop_environment.extends, null),
+                ".stop-deploy-agent"
+              )
+              auto_stop_in = coalesce(
+                try(job.stop_environment.auto_stop_in, null),
+                try(pipeline.stop_environment.auto_stop_in, null),
+                "1 hour"
+              )
+              rules = try(length(job.stop_environment.rules), 0) > 0 ? tolist(flatten([
+                for rule in job.stop_environment.rules : concat(
+                  try(rule.if, null) == null ? [] : ["    - if: '${replace(rule.if, "'", "''")}'"],
+                  try(rule.if, null) != null || try(rule.when, null) == null ? [] : ["    - when: ${jsonencode(rule.when)}"],
+                  try(rule.if, null) == null || try(rule.when, null) == null ? [] : ["      when: ${jsonencode(rule.when)}"],
+                  try(rule.allow_failure, null) == null ? [] : [
+                    try(rule.if, null) != null || try(rule.when, null) != null
+                    ? "      allow_failure: ${jsonencode(rule.allow_failure)}"
+                    : "    - allow_failure: ${jsonencode(rule.allow_failure)}"
+                  ]
+                )
+                ])) : try(length(pipeline.stop_environment.rules), 0) > 0 ? tolist(flatten([
+                for rule in pipeline.stop_environment.rules : concat(
+                  try(rule.if, null) == null ? [] : ["    - if: '${replace(rule.if, "'", "''")}'"],
+                  try(rule.if, null) != null || try(rule.when, null) == null ? [] : ["    - when: ${jsonencode(rule.when)}"],
+                  try(rule.if, null) == null || try(rule.when, null) == null ? [] : ["      when: ${jsonencode(rule.when)}"],
+                  try(rule.allow_failure, null) == null ? [] : [
+                    try(rule.if, null) != null || try(rule.when, null) != null
+                    ? "      allow_failure: ${jsonencode(rule.allow_failure)}"
+                    : "    - allow_failure: ${jsonencode(rule.allow_failure)}"
+                  ]
+                )
+                ])) : length(coalesce(try(job.rules, null), [])) > 0 ? tolist(flatten([
+                for rule in job.rules : concat(
+                  try(rule.if, null) == null ? [] : ["    - if: '${replace(rule.if, "'", "''")}'"],
+                  ["      when: \"manual\"", "      allow_failure: true"]
+                )
+              ])) : tolist(["    - when: \"manual\"", "      allow_failure: true"])
+            }
+            variables = tomap(merge(
               local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].default_variables,
               {
                 for source_key, target_key in local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].variable_keys :
@@ -172,14 +266,35 @@ locals {
                 ) : tostring(try(job.variables, {})[source_key])
                 if try(try(job.variables, {})[source_key], null) != null
               }
-            )
+            ))
           }
           ] : [
           {
             name    = coalesce(try(pipeline.job_name, null), local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].job_name)
             extends = local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].extends
-            rules   = []
-            variables = merge(
+            rules   = local.empty_ci_rule_lines
+            stop_environment = {
+              enabled = pipeline.type == "deploy_agent" ? coalesce(try(pipeline.stop_environment.enabled, null), false) : false
+              job_name = coalesce(
+                try(pipeline.stop_environment.job_name, null),
+                "stop-${coalesce(try(pipeline.job_name, null), local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].job_name)}"
+              )
+              extends      = coalesce(try(pipeline.stop_environment.extends, null), ".stop-deploy-agent")
+              auto_stop_in = coalesce(try(pipeline.stop_environment.auto_stop_in, null), "1 hour")
+              rules = try(length(pipeline.stop_environment.rules), 0) > 0 ? tolist(flatten([
+                for rule in pipeline.stop_environment.rules : concat(
+                  try(rule.if, null) == null ? [] : ["    - if: '${replace(rule.if, "'", "''")}'"],
+                  try(rule.if, null) != null || try(rule.when, null) == null ? [] : ["    - when: ${jsonencode(rule.when)}"],
+                  try(rule.if, null) == null || try(rule.when, null) == null ? [] : ["      when: ${jsonencode(rule.when)}"],
+                  try(rule.allow_failure, null) == null ? [] : [
+                    try(rule.if, null) != null || try(rule.when, null) != null
+                    ? "      allow_failure: ${jsonencode(rule.allow_failure)}"
+                    : "    - allow_failure: ${jsonencode(rule.allow_failure)}"
+                  ]
+                )
+              ])) : tolist(["    - when: \"manual\"", "      allow_failure: true"])
+            }
+            variables = tomap(merge(
               local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].default_variables,
               {
                 for source_key, target_key in local.pipeline_types[pipeline.type == "build" ? "build_${pipeline.target}" : pipeline.type].variable_keys :
@@ -189,7 +304,7 @@ locals {
                 ) : tostring(try(pipeline.variables, {})[source_key])
                 if try(try(pipeline.variables, {})[source_key], null) != null
               }
-            )
+            ))
           }
         ]
         template = {
@@ -249,44 +364,50 @@ locals {
               "    ${variable_name}: ${jsonencode(job.variables[variable_name])}"
               if contains(keys(job.variables), variable_name)
             ],
-            length(job.rules) == 0 ? [] : concat(
-              ["  rules:"],
-              flatten([
-                for rule in job.rules : concat(
-                  try(rule.if, null) == null ? [] : ["    - if: '${replace(rule.if, "'", "''")}'"],
-                  try(rule.if, null) != null || try(rule.when, null) == null ? [] : ["    - when: ${jsonencode(rule.when)}"],
-                  try(rule.if, null) == null || try(rule.when, null) == null ? [] : ["      when: ${jsonencode(rule.when)}"],
-                  try(rule.allow_failure, null) == null ? [] : [
-                    try(rule.if, null) != null || try(rule.when, null) != null
-                    ? "      allow_failure: ${jsonencode(rule.allow_failure)}"
-                    : "    - allow_failure: ${jsonencode(rule.allow_failure)}"
-                  ],
-                  length(coalesce(try(rule.changes, null), [])) == 0 ? [] : concat(
-                    [
-                      try(rule.if, null) != null || try(rule.when, null) != null || try(rule.allow_failure, null) != null
-                      ? "      changes:"
-                      : "    - changes:"
-                    ],
-                    [for path in coalesce(try(rule.changes, null), []) : "        - ${jsonencode(path)}"]
-                  ),
-                  length(coalesce(try(rule.exists, null), [])) == 0 ? [] : concat(
-                    [
-                      try(rule.if, null) != null || try(rule.when, null) != null || try(rule.allow_failure, null) != null || length(coalesce(try(rule.changes, null), [])) > 0
-                      ? "      exists:"
-                      : "    - exists:"
-                    ],
-                    [for path in coalesce(try(rule.exists, null), []) : "        - ${jsonencode(path)}"]
-                  ),
-                  try(rule.start_in, null) == null ? [] : [
-                    try(rule.if, null) != null || try(rule.when, null) != null || try(rule.allow_failure, null) != null || length(coalesce(try(rule.changes, null), [])) > 0 || length(coalesce(try(rule.exists, null), [])) > 0
-                    ? "      start_in: ${jsonencode(rule.start_in)}"
-                    : "    - start_in: ${jsonencode(rule.start_in)}"
-                  ]
-                )
-              ])
-            ),
+            job.stop_environment.enabled ? concat(
+              [
+                "  environment:",
+                "    name: ${jsonencode(job.variables["DEPLOY_ENVIRONMENT_NAME"])}",
+              ],
+              contains(keys(job.variables), "DEPLOY_ENVIRONMENT_KUBERNETES_AGENT") || contains(keys(job.variables), "DEPLOY_ENVIRONMENT_DASHBOARD_NAMESPACE") ? concat(
+                ["    kubernetes:"],
+                contains(keys(job.variables), "DEPLOY_ENVIRONMENT_KUBERNETES_AGENT") ? [
+                  "      agent: ${jsonencode(job.variables["DEPLOY_ENVIRONMENT_KUBERNETES_AGENT"])}"
+                ] : [],
+                contains(keys(job.variables), "DEPLOY_ENVIRONMENT_DASHBOARD_NAMESPACE") ? [
+                  "      dashboard:",
+                  "        namespace: ${jsonencode(job.variables["DEPLOY_ENVIRONMENT_DASHBOARD_NAMESPACE"])}"
+                ] : []
+              ) : [],
+              [
+                "    on_stop: ${job.stop_environment.job_name}",
+                "    auto_stop_in: ${jsonencode(job.stop_environment.auto_stop_in)}",
+              ]
+            ) : [],
+            length(job.rules) == 0 ? [] : concat(["  rules:"], job.rules),
             [""]
           )
+        ]),
+        flatten([
+          for job in pipeline.jobs : job.stop_environment.enabled ? concat(
+            [
+              "${job.stop_environment.job_name}:",
+              "  extends: ${job.stop_environment.extends}",
+              "  variables:",
+            ],
+            [
+              for variable_name in pipeline.config.variable_order :
+              "    ${variable_name}: ${jsonencode(job.variables[variable_name])}"
+              if contains(keys(job.variables), variable_name)
+            ],
+            [
+              "  environment:",
+              "    name: ${jsonencode(job.variables["DEPLOY_ENVIRONMENT_NAME"])}",
+              "    action: stop",
+            ],
+            length(job.stop_environment.rules) == 0 ? [] : concat(["  rules:"], job.stop_environment.rules),
+            [""]
+          ) : []
         ]),
         [""]
       ))

@@ -17,6 +17,10 @@ run "deploy_agent_multi_job" {
           {
             type                 = "deploy_agent"
             create_merge_request = false
+            stop_environment = {
+              enabled      = true
+              auto_stop_in = "1 hour"
+            }
             jobs = [
               {
                 name = "deploy-dev"
@@ -85,6 +89,31 @@ run "deploy_agent_multi_job" {
   assert {
     condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  rules:\n    - if: '$CI_COMMIT_BRANCH == \"main\"'\n      when: \"on_success\"")
     error_message = "The generated deploy-dev job must include its configured branch rule."
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  environment:\n    name: \"dev\"") && strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "    on_stop: stop-deploy-dev")
+    error_message = "The deploy job must render GitLab environment metadata with a paired stop job."
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "    auto_stop_in: \"1 hour\"")
+    error_message = "The deploy job must render a 1 hour auto-stop duration."
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "\nstop-deploy-dev:\n") && strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  extends: .stop-deploy-agent")
+    error_message = "The generated deploy pipeline must include a stop job using the reusable stop template."
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "stop-deploy-dev:\n  extends: .stop-deploy-agent") && strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  rules:\n    - if: '$CI_COMMIT_BRANCH == \"main\"'\n      when: \"manual\"\n      allow_failure: true")
+    error_message = "The generated stop job must inherit the deploy job rule selector and stay manual."
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  environment:\n    name: \"dev\"\n    action: stop")
+    error_message = "The stop job must mark the GitLab environment as stopped."
   }
 }
 

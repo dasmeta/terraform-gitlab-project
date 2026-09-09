@@ -16,8 +16,6 @@ module "gitlab" {
     { key = "AWS_ACCESS_KEY_ID", value = "access_key" },
     { key = "AWS_SECRET_ACCESS_KEY", value = "secret_access_key", masked = true },
     { key = "AWS_SESSION_TOKEN", value = "session_token" },
-    { key = "REGISTRY_USERNAME", value = "registry_username", masked = true },
-    { key = "REGISTRY_PASSWORD", value = "registry_password", masked = true },
   ]
 
   gitlab_groups = [
@@ -176,13 +174,13 @@ module "gitlab" {
       gitlab_ci_pipelines = [
         {
           type   = "build"
-          target = "onprem"
+          target = "ecr"
           jobs = [
             {
               name = "build-dev"
               variables = {
-                registry_host    = "docker.io"
-                image_repository = "dasmeta/test"
+                aws_region       = "aws_region"
+                image_repository = "XXXXXXXXXXXX.dkr.ecr.aws_region.amazonaws.com/dasmeta-test"
                 image_tags       = ["dev-$CI_COMMIT_SHORT_SHA", "latest"]
                 dockerfile_path  = "Dockerfile"
                 build_context    = "."
@@ -196,9 +194,9 @@ module "gitlab" {
                 },
               ]
               variables = {
-                registry_host    = "docker.io"
-                image_repository = "dasmeta/test"
-                image_tags       = ["prod-$CI_COMMIT_SHORT_SHA"]
+                aws_region       = "aws_region"
+                image_repository = "XXXXXXXXXXXX.dkr.ecr.aws_region.amazonaws.com/dasmeta-test"
+                image_tags       = ["dev-$CI_COMMIT_SHORT_SHA", "latest"]
                 dockerfile_path  = "Dockerfile"
                 build_context    = "."
               }
@@ -207,12 +205,17 @@ module "gitlab" {
         },
         {
           type = "deploy_agent"
+          stop_environment = {
+            enabled      = true
+            auto_stop_in = "1 hour"
+          }
           jobs = [
             {
               name = "deploy-dev"
               rules = [
                 {
-                  if = "$CI_COMMIT_BRANCH == \"develop\""
+                  if   = "$CI_COMMIT_BRANCH =~ /^release\\/.*$/"
+                  when = "on_success"
                 },
               ]
               variables = {
