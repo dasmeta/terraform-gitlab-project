@@ -409,7 +409,7 @@ variable "gitlab_projects" {
       file_path            = optional(string)                                 # Defaults according to pipeline type
       job_name             = optional(string)                                 # Defaults according to pipeline type
       template_project     = optional(string, "das-meta/gitlab-ci-templates") # Project containing reusable templates
-      template_ref         = optional(string, "DMVP-1150")                    # Template branch/tag/sha to include
+      template_ref         = optional(string, "1.1.0")                        # Template branch/tag/sha to include
       template_file        = optional(string)                                 # Defaults according to pipeline type
       variables = optional(object({                                           # Pipeline-type-specific variables
         aws_region                             = optional(string)             # AWS region for ECR build jobs
@@ -439,6 +439,20 @@ variable "gitlab_projects" {
         helm_image_tag_set_path                = optional(string)             # Helm value path for the image tag
         helm_wait                              = optional(bool)               # Wait for Helm resources to become ready
         helm_timeout                           = optional(string)             # Helm operation timeout (for example 40m)
+      }), {})                                                                 # Defaults according to pipeline type
+      stop_environment = optional(object({                                    # Optional deploy_agent stop-job generation settings
+        enabled      = optional(bool, false)                                  # Generate paired stop jobs and environment.on_stop
+        job_name     = optional(string)                                       # Stop job name for legacy single-job pipelines
+        extends      = optional(string, ".stop-deploy-agent")                 # Hidden reusable stop template job to extend
+        auto_stop_in = optional(string, "1 hour")                             # GitLab environment auto-stop duration
+        rules = optional(list(object({                                        # Ordered GitLab CI rules for generated stop jobs
+          if            = optional(string)                                    # GitLab CI rule expression
+          when          = optional(string)                                    # Job scheduling behavior such as manual
+          allow_failure = optional(bool)                                      # Allow this rule's stop job execution to fail
+          changes       = optional(list(string))                              # Run when matching files change
+          exists        = optional(list(string))                              # Run when matching repository paths exist
+          start_in      = optional(string)                                    # Delay used with when = delayed
+        })))
       }), {})
       jobs = optional(list(object({                                       # Multiple jobs rendered into the same generated pipeline file
         name = string                                                     # Generated GitLab CI job name
@@ -470,6 +484,20 @@ variable "gitlab_projects" {
           helm_image_tag_set_path                = optional(string)       # Helm value path for the image tag
           helm_wait                              = optional(bool)         # Wait for Helm resources to become ready
           helm_timeout                           = optional(string)       # Helm operation timeout (for example 40m)
+        }), {})
+        stop_environment = optional(object({       # Optional deploy_agent stop-job override for this job
+          enabled      = optional(bool)            # Override pipeline stop-job generation
+          job_name     = optional(string)          # Stop job name; defaults to stop-<job name>
+          extends      = optional(string)          # Hidden reusable stop template job to extend
+          auto_stop_in = optional(string)          # GitLab environment auto-stop duration
+          rules = optional(list(object({           # Ordered GitLab CI rules for this generated stop job
+            if            = optional(string)       # GitLab CI rule expression
+            when          = optional(string)       # Job scheduling behavior such as manual
+            allow_failure = optional(bool)         # Allow this rule's stop job execution to fail
+            changes       = optional(list(string)) # Run when matching files change
+            exists        = optional(list(string)) # Run when matching repository paths exist
+            start_in      = optional(string)       # Delay used with when = delayed
+          })))
         }), {})
         rules = optional(list(object({           # Ordered GitLab CI rules for this generated job; null when omitted
           if            = optional(string)       # GitLab CI expression evaluated for the rule
@@ -547,7 +575,9 @@ variable "gitlab_projects" {
     For type = "deploy_agent", the module writes ci-pipelines/deploy.gitlab-ci.yml with one include of
     the reusable GitLab Agent deploy template. Set jobs to generate multiple jobs in that file; each job
     extends .deploy-agent and owns its variables. When jobs is omitted or empty, legacy job_name + variables
-    generates one deploy job. jobs[].rules supports if, when, allow_failure, changes, exists, and start_in.
+    generates one deploy job. Set stop_environment.enabled = true on the pipeline or a job to generate paired
+    stop jobs, render environment.on_stop, and allow GitLab to stop ephemeral environments from Operate -> Environments.
+    jobs[].rules and stop_environment.rules support if, when, allow_failure, changes, exists, and start_in.
   EOT
   validation {
     condition = alltrue([

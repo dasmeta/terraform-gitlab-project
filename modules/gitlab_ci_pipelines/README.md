@@ -9,6 +9,14 @@ Supported pipeline types are:
 - `build_ecr`, retained as a compatibility alias for existing consumers
 - `deploy_agent`, which creates `ci-pipelines/deploy.gitlab-ci.yml`
 
+For ephemeral GitLab environments, `deploy_agent` can generate paired stop jobs
+by setting `stop_environment.enabled = true` on the pipeline or on an individual
+job. The deploy job then renders `environment.on_stop` and `auto_stop_in`; the
+generated stop job extends `.stop-deploy-agent` and renders
+`environment.action = stop`. When no explicit `stop_environment.rules` are set,
+the generated stop job inherits the deploy job rule selector and uses
+`when = manual` with `allow_failure = true`.
+
 Each generated file includes its shared reusable template from
 `das-meta/gitlab-ci-templates`. A build or deploy entry may define multiple
 jobs in one generated file; each job extends the hidden template job with its
@@ -78,7 +86,7 @@ Example generated shape:
 ```yaml
 include:
   - project: das-meta/gitlab-ci-templates
-    ref: DMVP-1150
+    ref: 1.1.0
     file: /ci-templates/templates/build/ecr-build.gitlab-ci.yml
 
 build:
@@ -96,7 +104,7 @@ Example generated build wrapper:
 ```yaml
 include:
   - project: das-meta/gitlab-ci-templates
-    ref: DMVP-1150
+    ref: 1.1.0
     file: /ci-templates/templates/build/ecr-build.gitlab-ci.yml
 
 build-dev:
@@ -129,7 +137,7 @@ Example generated deploy wrapper:
 ```yaml
 include:
   - project: das-meta/gitlab-ci-templates
-    ref: DMVP-1150
+    ref: 1.1.0
     file: /ci-templates/templates/deploy/agent-deploy.gitlab-ci.yml
 
 deploy-dev:
@@ -144,9 +152,36 @@ deploy-dev:
     HELM_CHART: "dasmeta/base"
     HELM_WAIT: "true"
     HELM_TIMEOUT: "40m"
+  environment:
+    name: "dev"
+    kubernetes:
+      agent: "example/platform:eks-agent"
+      dashboard:
+        namespace: "dev"
+    on_stop: stop-deploy-dev
+    auto_stop_in: "1 hour"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success
+
+stop-deploy-dev:
+  extends: .stop-deploy-agent
+  variables:
+    DEPLOY_ENVIRONMENT_NAME: "dev"
+    DEPLOY_ENVIRONMENT_KUBERNETES_AGENT: "example/platform:eks-agent"
+    DEPLOY_ENVIRONMENT_DASHBOARD_NAMESPACE: "dev"
+    KUBE_NAMESPACE: "dev"
+    KUBE_NAMESPACE_CREATE: "true"
+    HELM_RELEASE: "example-service"
+    HELM_CHART: "dasmeta/base"
+    HELM_WAIT: "true"
+    HELM_TIMEOUT: "40m"
+  environment:
+    name: "dev"
+    action: stop
+  rules:
+    - when: "manual"
+      allow_failure: true
 
 deploy-prod:
   extends: .deploy-agent
@@ -202,3 +237,42 @@ No modules.
 
 No outputs.
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | ~> 19.0 |
+| <a name="requirement_null"></a> [null](#requirement\_null) | ~> 3.2 |
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | 19.1.0 |
+| <a name="provider_null"></a> [null](#provider\_null) | 3.3.0 |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [gitlab_branch.ci_pipeline](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/branch) | resource |
+| [gitlab_repository_file.ci_pipeline](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/repository_file) | resource |
+| [null_resource.ci_pipeline_merge_request](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_gitlab_projects"></a> [gitlab\_projects](#input\_gitlab\_projects) | Same normalized shape as the root module variable gitlab\_projects, including gitlab\_ci\_pipelines entries. | `any` | n/a | yes |
+| <a name="input_project_ids"></a> [project\_ids](#input\_project\_ids) | Map of project name to GitLab project ID (from modules/project). | `map(number)` | n/a | yes |
+
+## Outputs
+
+No outputs.
+<!-- END_TF_DOCS -->

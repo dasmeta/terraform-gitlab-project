@@ -17,6 +17,10 @@ run "deploy_agent_multi_job" {
           {
             type                 = "deploy_agent"
             create_merge_request = false
+            stop_environment = {
+              enabled      = true
+              auto_stop_in = "1 hour"
+            }
             jobs = [
               {
                 name = "deploy-dev"
@@ -85,6 +89,31 @@ run "deploy_agent_multi_job" {
   assert {
     condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  rules:\n    - if: '$CI_COMMIT_BRANCH == \"main\"'\n      when: \"on_success\"")
     error_message = "The generated deploy-dev job must include its configured branch rule."
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  environment:\n    name: \"dev\"") && strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "    on_stop: stop-deploy-dev")
+    error_message = "The deploy job must render GitLab environment metadata with a paired stop job."
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "    auto_stop_in: \"1 hour\"")
+    error_message = "The deploy job must render a 1 hour auto-stop duration."
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "\nstop-deploy-dev:\n") && strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  extends: .stop-deploy-agent")
+    error_message = "The generated deploy pipeline must include a stop job using the reusable stop template."
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "stop-deploy-dev:\n  extends: .stop-deploy-agent") && strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  rules:\n    - if: '$CI_COMMIT_BRANCH == \"main\"'\n      when: \"manual\"\n      allow_failure: true")
+    error_message = "The generated stop job must inherit the deploy job rule selector and stay manual."
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  environment:\n    name: \"dev\"\n    action: stop")
+    error_message = "The stop job must mark the GitLab environment as stopped."
   }
 }
 
@@ -211,6 +240,189 @@ run "build_ecr_without_when" {
   assert {
     condition     = !strcontains(gitlab_repository_file.ci_pipeline["service-one:build_ecr"].content, "when:")
     error_message = "A rule without when must not render a when block."
+  }
+}
+
+run "deploy_agent_stop_inherits_when_only_rule" {
+  command = plan
+
+  variables {
+    project_ids = {
+      service-one = 1
+    }
+
+    gitlab_projects = [
+      {
+        name           = "service-one"
+        default_branch = "main"
+        gitlab_ci_pipelines = [
+          {
+            type                 = "deploy_agent"
+            create_merge_request = false
+            stop_environment = {
+              enabled = true
+            }
+            jobs = [
+              {
+                name = "deploy-dev"
+                rules = [
+                  {
+                    when = "always"
+                  },
+                ]
+                variables = {
+                  deploy_environment_name                = "dev"
+                  deploy_environment_kubernetes_agent    = "example/platform:eks-agent"
+                  deploy_environment_dashboard_namespace = "dev"
+                  kube_namespace                         = "dev"
+                  helm_release                           = "example-service"
+                  helm_chart                             = "dasmeta/base"
+                }
+              },
+            ]
+          },
+        ]
+      },
+    ]
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "stop-deploy-dev:\n  extends: .stop-deploy-agent") && strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  rules:\n    - when: \"manual\"\n      allow_failure: true")
+    error_message = "A stop job inherited from a when-only deploy rule must render a valid GitLab CI rules list item."
+  }
+}
+
+run "reject_stop_environment_without_required_variables" {
+  command = plan
+
+  variables {
+    project_ids = {
+      service-one = 1
+    }
+
+    gitlab_projects = [
+      {
+        name           = "service-one"
+        default_branch = "main"
+        gitlab_ci_pipelines = [
+          {
+            type                 = "deploy_agent"
+            create_merge_request = false
+            stop_environment = {
+              enabled = true
+            }
+            jobs = [
+              {
+                name = "deploy-dev"
+                variables = {
+                  kube_namespace = "dev"
+                  helm_release   = "example-service"
+                }
+              },
+            ]
+          },
+        ]
+      },
+    ]
+  }
+
+  expect_failures = [
+    var.gitlab_projects,
+  ]
+}
+
+run "deploy_agent_stop_rule_renders_all_fields" {
+  command = plan
+
+  variables {
+    project_ids = {
+      service-one = 1
+    }
+
+    gitlab_projects = [
+      {
+        name           = "service-one"
+        default_branch = "main"
+        gitlab_ci_pipelines = [
+          {
+            type                 = "deploy_agent"
+            create_merge_request = false
+            jobs = [
+              {
+                name = "deploy-dev"
+                stop_environment = {
+                  enabled = true
+                  rules = [
+                    {
+                      if            = "$CI_COMMIT_BRANCH == \"main\""
+                      when          = "delayed"
+                      allow_failure = true
+                      changes       = ["k8s/**"]
+                      exists        = ["Chart.yaml"]
+                      start_in      = "5 minutes"
+                    },
+                  ]
+                }
+                variables = {
+                  deploy_environment_name                = "dev"
+                  deploy_environment_kubernetes_agent    = "example/platform:eks-agent"
+                  deploy_environment_dashboard_namespace = "dev"
+                  kube_namespace                         = "dev"
+                  helm_release                           = "example-service"
+                  helm_chart                             = "dasmeta/base"
+                }
+              },
+            ]
+          },
+        ]
+      },
+    ]
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "stop-deploy-dev:\n  extends: .stop-deploy-agent") && strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "      changes:\n        - \"k8s/**\"\n      exists:\n        - \"Chart.yaml\"\n      start_in: \"5 minutes\"")
+    error_message = "Stop environment rules must render changes, exists, and start_in fields."
+  }
+}
+
+run "deploy_agent_environment_without_stop_job" {
+  command = plan
+
+  variables {
+    project_ids = {
+      service-one = 1
+    }
+
+    gitlab_projects = [
+      {
+        name           = "service-one"
+        default_branch = "main"
+        gitlab_ci_pipelines = [
+          {
+            type                 = "deploy_agent"
+            create_merge_request = false
+            jobs = [
+              {
+                name = "deploy-dev"
+                variables = {
+                  deploy_environment_name                = "dev"
+                  deploy_environment_kubernetes_agent    = "example/platform:eks-agent"
+                  deploy_environment_dashboard_namespace = "dev"
+                  kube_namespace                         = "dev"
+                  helm_release                           = "example-service"
+                  helm_chart                             = "dasmeta/base"
+                }
+              },
+            ]
+          },
+        ]
+      },
+    ]
+  }
+
+  assert {
+    condition     = strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "  environment:\n    name: \"dev\"\n    kubernetes:") && !strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "    on_stop:") && !strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "    auto_stop_in:") && !strcontains(gitlab_repository_file.ci_pipeline["service-one:deploy_agent"].content, "\nstop-deploy-dev:\n")
+    error_message = "Deploy jobs with environment metadata must render an environment block even when stop_environment is disabled."
   }
 }
 
