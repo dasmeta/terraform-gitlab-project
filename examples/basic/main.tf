@@ -196,7 +196,7 @@ module "gitlab" {
               variables = {
                 aws_region       = "aws_region"
                 image_repository = "XXXXXXXXXXXX.dkr.ecr.aws_region.amazonaws.com/dasmeta-test"
-                image_tags       = ["dev-$CI_COMMIT_SHORT_SHA", "latest"]
+                image_tags       = ["prod-$CI_COMMIT_SHORT_SHA"]
                 dockerfile_path  = "Dockerfile"
                 build_context    = "."
               }
