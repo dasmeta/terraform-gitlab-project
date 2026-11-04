@@ -15,7 +15,9 @@ jobs:
     strategy:
       matrix:
         path:
-          - /
+          - modules/dynamic_environment
+          - modules/gitlab_ci_pipelines
+          - modules/project
 
     steps:
     - uses: dasmeta/reusable-actions-workflows/terraform-test@4.3.0
@@ -24,4 +26,4 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         path: ${{ matrix.path }}
-      continue-on-error: true
+        terraform_version: 1.7.0
