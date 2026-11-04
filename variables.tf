@@ -375,7 +375,15 @@ variable "gitlab_projects" {
       allow_force_push             = optional(bool, false)                            # Allow force-push on the branch
       code_owner_approval_required = optional(bool, false)                            # Require code-owner approval
       unprotect_access_level       = optional(string, "maintainer")                   # Unprotect access role
+      push_user_ids                = optional(list(number), [])                       # Users allowed to push in addition to push_access_level
     })), [])
+    ci_delete_pipelines_in_seconds = optional(number)                 # Delete pipelines (with their job logs and artifacts) older than this
+    mr_approvals = optional(object({                                  # Project-level merge request approval settings
+      reset_approvals_on_push                        = optional(bool) # Remove approvals when new commits are pushed to the source branch
+      merge_requests_author_approval                 = optional(bool) # Let the author approve their own merge request
+      merge_requests_disable_committers_approval     = optional(bool) # Stop committers from approving the merge request
+      disable_overriding_approvers_per_merge_request = optional(bool) # Stop editing approval rules per merge request
+    }))
     approval_rule = optional(list(object({                                  # Project approval rules
       name                              = optional(string, "Approval rule") # Approval rule display name
       approvals_required                = optional(number, 1)               # Number of approvals required
@@ -536,8 +544,15 @@ variable "gitlab_projects" {
 
     branch_protections — Optional list per project: Settings → Repository → Protected branches.
     When omitted or set to [], this module creates one default protection for branch "main".
-    Access is only via merge_access_level / push_access_level / unprotect_access_level (maintainer, developer, admin, no one).
-    Granular "specific users/groups" rows from the GitLab UI are not supported by provider resource gitlab_branch_protection.
+    Access is set with merge_access_level / push_access_level / unprotect_access_level (maintainer, developer, admin, no one).
+    push_user_ids adds specific users who may push regardless of push_access_level, e.g. a release bot that commits
+    the changelog while push_access_level = "no one".
+
+    ci_delete_pipelines_in_seconds — CI/CD → General pipelines: pipelines older than this are deleted together with
+    their job logs and artifacts. Omit it to leave the project setting unmanaged by this module.
+
+    mr_approvals — Merge requests → Approval settings (gitlab_project_level_mr_approvals). Omit it to leave
+    the settings unmanaged; unset fields inside it keep their current GitLab value.
 
     approval_rule — Optional per project. Accepts a list of approval rule objects.
     When omitted or set to [], no project approval rule resources are created.
@@ -585,6 +600,14 @@ variable "gitlab_projects" {
       contains(["no_one_allowed", "developer", "maintainer", "owner"], p.ci_pipeline_variables_minimum_override_role)
     ])
     error_message = "gitlab_projects[].ci_pipeline_variables_minimum_override_role must be one of: no_one_allowed, developer, maintainer, owner."
+  }
+
+  validation {
+    condition = alltrue([
+      for p in var.gitlab_projects :
+      try(p.ci_delete_pipelines_in_seconds, null) == null || (p.ci_delete_pipelines_in_seconds >= 86400 && p.ci_delete_pipelines_in_seconds <= 31536000)
+    ])
+    error_message = "gitlab_projects[].ci_delete_pipelines_in_seconds must be between 86400 (1 day) and 31536000 (1 year)."
   }
 
   validation {

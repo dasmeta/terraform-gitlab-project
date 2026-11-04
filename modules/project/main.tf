@@ -35,6 +35,8 @@ resource "gitlab_project" "this" {
 
   resolve_outdated_diff_discussions = try(each.value.resolve_outdated_diff_discussions, null)
 
+  ci_delete_pipelines_in_seconds = try(each.value.ci_delete_pipelines_in_seconds, null)
+
   dynamic "push_rules" {
     for_each = try(each.value.push_rules, [])
     content {
@@ -71,17 +73,38 @@ resource "gitlab_branch_protection" "branch" {
     }
   ]
 
-  allowed_to_push = [
-    {
-      access_level = each.value.push_access_level
-    }
-  ]
+  allowed_to_push = concat(
+    [
+      {
+        access_level = each.value.push_access_level
+      }
+    ],
+    [
+      for user_id in each.value.push_user_ids : {
+        user_id = user_id
+      }
+    ]
+  )
 
   allowed_to_unprotect = [
     {
       access_level = each.value.unprotect_access_level
     }
   ]
+}
+
+resource "gitlab_project_level_mr_approvals" "this" {
+  for_each = {
+    for p in var.gitlab_projects : p.name => p.mr_approvals
+    if var.projects_enabled && try(p.mr_approvals, null) != null
+  }
+
+  project = gitlab_project.this[each.key].id
+
+  reset_approvals_on_push                        = try(each.value.reset_approvals_on_push, null)
+  merge_requests_author_approval                 = try(each.value.merge_requests_author_approval, null)
+  merge_requests_disable_committers_approval     = try(each.value.merge_requests_disable_committers_approval, null)
+  disable_overriding_approvers_per_merge_request = try(each.value.disable_overriding_approvers_per_merge_request, null)
 }
 
 resource "gitlab_project_approval_rule" "this" {
