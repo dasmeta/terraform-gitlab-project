@@ -18,6 +18,12 @@ jobs:
           - modules/dynamic_environment
           - modules/gitlab_ci_pipelines
           - modules/project
+          - modules/renovate
+          - modules/renovate_repository
+        include:
+          # Existing root validations reference other variables/locals (Terraform 1.9+).
+          - path: .
+            terraform_version: 1.9.8
 
     steps:
     - uses: dasmeta/reusable-actions-workflows/terraform-test@4.3.0
@@ -26,4 +32,15 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         path: ${{ matrix.path }}
-        terraform_version: 1.7.0
+        terraform_version: ${{ matrix.terraform_version || '1.7.0' }}
+
+  renovate-mr-helper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m unittest discover -s modules/renovate_repository/tests -p '*_test.py'
