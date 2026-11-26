@@ -4,6 +4,11 @@ mock_provider "null" {}
 run "deploy_agent_multi_job" {
   command = plan
 
+  assert {
+    condition     = output.repository_file_paths["service-one"] == tolist(["ci-pipelines/deploy.gitlab-ci.yml"])
+    error_message = "Export the exact generated path for repository automation coordination."
+  }
+
   variables {
     project_ids = {
       service-one = 1

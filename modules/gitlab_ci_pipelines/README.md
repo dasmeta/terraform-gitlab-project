@@ -235,7 +235,9 @@ No modules.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+|------|-------------|
+| <a name="output_repository_file_paths"></a> [repository\_file\_paths](#output\_repository\_file\_paths) | Exact generated CI file paths indexed by project name, for coordination with other repository automation. |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 
 <!-- BEGIN_TF_DOCS -->

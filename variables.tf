@@ -281,7 +281,7 @@ variable "dynamic_environments_project" {
   validation {
     condition = (
       !try(var.dynamic_environments_project.e2e_config.enabled, false) ||
-      length(trimspace(try(var.dynamic_environments_project.e2e_config.project, ""))) > 0
+      try(length(trimspace(var.dynamic_environments_project.e2e_config.project)) > 0, false)
     )
     error_message = "dynamic_environments_project.e2e_config.project must be non-empty when E2E is enabled."
   }
@@ -398,6 +398,25 @@ variable "gitlab_projects" {
       masked    = optional(bool, false)    # Hide value in logs / UI where supported
       protected = optional(bool, false)    # Restrict variable to protected refs
     })), [])
+    renovate = optional(object({
+      enabled             = optional(bool, false)
+      source_branch       = optional(string, "terraform/renovate")
+      merge_request_title = optional(string, "chore: configure Renovate")
+      extends             = optional(list(string), ["config:recommended"])
+      include_paths       = optional(list(string), [])
+      ignore_paths        = optional(list(string), [])
+      custom_managers = optional(list(object({
+        custom_type           = optional(string, "regex")
+        manager_file_patterns = list(string)
+        match_strings         = list(string)
+        file_format           = optional(string)
+        datasource_template   = optional(string)
+        dep_name_template     = optional(string)
+        package_name_template = optional(string)
+        versioning_template   = optional(string)
+        registry_url_template = optional(string)
+      })), [])
+    }), {})
     dynamic_environment = optional(object({                                                    # Per-project dynamic environment pipeline configuration
       enabled             = optional(bool, false)                                              # Enable generated dynamic environment CI jobs for this project
       ci_file_path        = optional(string, "ci-pipelines/dynamic-environment.gitlab-ci.yml") # Repository path for the generated CI configuration
@@ -605,7 +624,7 @@ variable "gitlab_projects" {
   validation {
     condition = alltrue([
       for p in var.gitlab_projects :
-      try(p.ci_delete_pipelines_in_seconds, null) == null || (p.ci_delete_pipelines_in_seconds >= 86400 && p.ci_delete_pipelines_in_seconds <= 31536000)
+      p.ci_delete_pipelines_in_seconds == null ? true : (p.ci_delete_pipelines_in_seconds >= 86400 && p.ci_delete_pipelines_in_seconds <= 31536000)
     ])
     error_message = "gitlab_projects[].ci_delete_pipelines_in_seconds must be between 86400 (1 day) and 31536000 (1 year)."
   }
@@ -841,4 +860,51 @@ check "dynamic_environment_central_project_required" {
     condition     = !local.dynamic_environment_service_enabled || var.dynamic_environments_project.enabled
     error_message = "dynamic_environments_project.enabled must be true when any gitlab_projects[].dynamic_environment.enabled is true."
   }
+}
+
+variable "renovate_token" {
+  type        = string
+  default     = null
+  description = "Optional GitLab token forwarded to the Renovate worker to create its Kubernetes Secret. Sensitive but stored in Terraform state and Helm release values. Mutually exclusive with renovate.install.existing_secret."
+  sensitive   = true
+}
+
+variable "renovate" {
+  type = object({
+    endpoint     = optional(string, "https://gitlab.com/api/v4")
+    repositories = optional(list(string), [])
+    defaults = optional(object({
+      extends       = optional(list(string), [])
+      include_paths = optional(list(string), [])
+      ignore_paths  = optional(list(string), [])
+      custom_managers = optional(list(object({
+        custom_type           = optional(string, "regex")
+        manager_file_patterns = list(string)
+        match_strings         = list(string)
+        file_format           = optional(string)
+        datasource_template   = optional(string)
+        dep_name_template     = optional(string)
+        package_name_template = optional(string)
+        versioning_template   = optional(string)
+        registry_url_template = optional(string)
+      })), [])
+    }), {})
+    install = optional(object({
+      enabled          = optional(bool, false)
+      release_name     = optional(string, "renovate")
+      namespace        = optional(string, "renovate")
+      create_namespace = optional(bool, true)
+      existing_secret  = optional(string, "")
+      chart_version    = optional(string, "46.440.2")
+      schedule         = optional(string, "0 */6 * * *")
+      time_zone        = optional(string, "Etc/UTC")
+      suspend          = optional(bool, false)
+      resources = optional(object({
+        requests = optional(map(string), { cpu = "100m", memory = "512Mi" })
+        limits   = optional(map(string), { memory = "2Gi" })
+      }), {})
+    }), {})
+  })
+  default     = {}
+  description = "Shared Renovate worker settings. Installation is independent of per-project renovate.enabled; use renovate_token or an existing Secret for credentials."
 }
