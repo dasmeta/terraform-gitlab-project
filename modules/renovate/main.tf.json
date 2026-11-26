@@ -30,10 +30,6 @@
             {
               "condition": "${local.cron_valid}",
               "error_message": "install.schedule must be numeric five-field cron with valid ranges, lists and positive steps."
-            },
-            {
-              "condition": "${length(var.repositories) > 0}",
-              "error_message": "Enabled installation requires at least one explicit repository path."
             }
           ]
         }

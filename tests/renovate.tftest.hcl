@@ -1,7 +1,7 @@
 override_data {
   target = module.renovate_repository.data.external.existing
   values = {
-    result = { config = "{}", file_path = "renovate.json", document = "{}", embedded = "false" }
+    result = { config = "{}", file_path = "renovate.json", document = "{}", embedded = "false", commit_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", source_sha256 = "" }
   }
 }
 
@@ -129,5 +129,33 @@ run "derive_dynamic_and_agent_paths_for_their_owner" {
   assert {
     condition     = alltrue([for rule in module.renovate_repository.configurations["ignored"].packageRules : !contains(keys(rule), "matchFileNames")])
     error_message = "Files generated in another project must not restrict this project's native detection."
+  }
+}
+
+run "worker_with_last_derived_repository_is_running" {
+  command = plan
+  variables {
+    gitlab_projects = [{ name = "platform", namespace_id = 1, renovate = { enabled = true } }]
+    renovate        = { install = { enabled = true, existing_secret = "renovate-credentials", suspend = false } }
+  }
+  assert {
+    condition     = output.renovate_repositories == tolist(["example/platform"]) && !output.renovate_installation.suspend
+    error_message = "The installed worker must run when the last root-managed repository is opted in."
+  }
+}
+
+run "last_root_opt_in_disabled_keeps_worker_safely_suspended" {
+  command = plan
+  variables {
+    gitlab_projects = [{ name = "platform", namespace_id = 1, renovate = { enabled = false } }]
+    renovate        = { install = { enabled = true, existing_secret = "renovate-credentials", suspend = false } }
+  }
+  assert {
+    condition     = output.renovate_installation != null && output.renovate_installation.suspend && output.renovate_installation.secret_name == "renovate-credentials"
+    error_message = "Disabling the last root opt-in must retain the installed worker and force suspension."
+  }
+  assert {
+    condition     = length(output.renovate_repositories) == 0 && length(module.renovate.global_config.repositories) == 0 && !module.renovate.global_config.autodiscover && length(module.renovate_repository.configurations) == 0
+    error_message = "Last opt-out must clear explicit repositories without enabling discovery or retaining repository proposals."
   }
 }

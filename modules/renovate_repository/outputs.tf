@@ -4,6 +4,6 @@ output "configurations" {
 }
 
 output "source_branches" {
-  description = "Content-revision branches holding configuration proposals, created from the current target for each policy revision."
+  description = "Content-revision branches holding configuration proposals, created from the captured target commit for each policy revision."
   value       = local.source_branches
 }

@@ -5,8 +5,12 @@ Installs one CronJob, pinned to chart 46.440.2, with overlapping runs forbidden.
 Requires Kubernetes 1.27+ for CronJob time zones. Schedules use numeric five-field
 cron with wildcards, lists, ranges and positive steps; named days/months and macros
 are intentionally outside this bounded interface.
-Deployment defaults disabled; enabling requires an explicit repository allowlist
-and either `renovate_token` or an existing Secret in the release namespace. See
+Deployment defaults disabled; enabling requires either `renovate_token` or an
+existing Secret in the release namespace. Repositories use an explicit allowlist
+with autodiscovery disabled. An empty allowlist keeps the release installed,
+updates its configuration to `repositories=[]`, and forces the CronJob suspended,
+even when `install.suspend=false`. Adding repositories honors `install.suspend`
+again. `installation.suspend` reports this effective suspension state. See
 [standalone example](../../examples/renovate).
 
 Pass a sensitive `renovate_token` to let the upstream chart create
@@ -54,7 +58,7 @@ Pointing existing_secret to the chart's own managed Secret makes Helm remove it
 on upgrade. Switching to managed mode can also require reconciling ownership if
 a Secret with the generated name already exists.
 
-Enabled installations run normally and can create dependency branches and MRs.
+Enabled installations with repositories can create dependency branches and MRs.
 The module no longer exposes an install.dry_run setting or configures dryRun.
 Remove the retired setting from older YAML/HCL callers before applying updates.
 Bot requires merged repository configuration and does not create onboarding MRs.
@@ -114,5 +118,5 @@ No modules.
 | Name | Description |
 |------|-------------|
 | <a name="output_global_config"></a> [global\_config](#output\_global\_config) | Nonsecret worker configuration, also usable for validation. |
-| <a name="output_installation"></a> [installation](#output\_installation) | Nonsecret installation coordinates, or null when disabled. |
+| <a name="output_installation"></a> [installation](#output\_installation) | Nonsecret installation coordinates and effective suspension state, or null when disabled. |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

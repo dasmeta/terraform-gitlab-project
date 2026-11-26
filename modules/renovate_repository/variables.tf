@@ -47,7 +47,7 @@ variable "project_ids" {
 variable "endpoint" {
   type        = string
   default     = "https://gitlab.com/api/v4"
-  description = "GitLab API endpoint for configuration merge requests."
+  description = "GitLab API endpoint for configuration discovery and merge requests. Must match the configured GitLab provider's project URL and GITLAB_BASE_URL when set."
 }
 
 variable "repository_defaults" {

@@ -1,10 +1,9 @@
 """Read an existing Renovate config for Terraform without modifying GitLab."""
+import hashlib
 import json
-import os
 import sys
 import urllib.error
 import urllib.parse
-import urllib.request
 
 # Renovate's GitLab config discovery order, not a list of customer repositories.
 CONFIG_FILES = (
@@ -102,7 +101,8 @@ def discover(tree, raw):
             listed_directories.add(directory)
         if path not in paths:
             continue
-        document = parse_document(raw(path), path)
+        source = raw(path)
+        document = parse_document(source, path)
         embedded = path == 'package.json'
         if embedded and 'renovate' not in document:
             continue
@@ -117,31 +117,27 @@ def discover(tree, raw):
             'config': json.dumps(config, allow_nan=False),
             'document': json.dumps(document if embedded else {}, allow_nan=False),
             'embedded': 'true' if embedded else 'false',
+            'source_sha256': hashlib.sha256(source.encode('utf-8')).hexdigest(),
         }
-    return {'file_path': 'renovate.json', 'config': '{}', 'document': '{}', 'embedded': 'false'}
+    return {'file_path': 'renovate.json', 'config': '{}', 'document': '{}', 'embedded': 'false', 'source_sha256': ''}
 
 
-def main():
-    query = json.load(sys.stdin)
-    token = os.environ.get('GITLAB_API_TOKEN') or os.environ.get('GITLAB_TOKEN')
-    if not token:
-        raise ValueError('Set GITLAB_API_TOKEN or GITLAB_TOKEN for read-only Renovate configuration discovery.')
-    project = urllib.parse.quote(query['project'], safe='')
-    endpoint = query['endpoint'].rstrip('/')
-    ref = query['ref']
+def read_snapshot(api, project, ref):
+    """Discover config using one captured commit, including all directory reads."""
+    project_path = '/projects/' + urllib.parse.quote(project, safe='')
+    branch = api.request('GET', project_path + '/repository/branches/' + urllib.parse.quote(ref, safe=''))
+    commit_sha = branch['commit']['id']
+    if not isinstance(commit_sha, str) or not commit_sha:
+        raise ValueError('GitLab branch did not return a commit SHA.')
 
     def get(suffix, decode_json=True):
-        request = urllib.request.Request(endpoint + f'/projects/{project}' + suffix,
-                                         headers={'PRIVATE-TOKEN': token})
-        with urllib.request.urlopen(request, timeout=30) as response:
-            content = response.read().decode('utf-8')
-        return json.loads(content) if decode_json else content
+        return api.request('GET', project_path + suffix, decode_json=decode_json)
 
     def tree(path):
         entries = []
         page = 1
         while True:
-            args = urllib.parse.urlencode({'ref': ref, 'path': path, 'per_page': 100, 'page': page})
+            args = urllib.parse.urlencode({'ref': commit_sha, 'path': path, 'per_page': 100, 'page': page})
             batch = get('/repository/tree?' + args)
             entries.extend(batch)
             if len(batch) < 100:
@@ -150,10 +146,19 @@ def main():
 
     def raw(path):
         encoded = urllib.parse.quote(path, safe='')
-        args = urllib.parse.urlencode({'ref': ref})
+        args = urllib.parse.urlencode({'ref': commit_sha})
         return get(f'/repository/files/{encoded}/raw?' + args, decode_json=False)
 
-    print(json.dumps(discover(tree, raw)))
+    return dict(discover(tree, raw), commit_sha=commit_sha)
+
+
+def main():
+    # Keep pure discovery importable without changing the importlib test path.
+    from gitlab_api import GitLabAPI
+
+    query = json.load(sys.stdin)
+    api = GitLabAPI(query['endpoint'], query['project_url'])
+    print(json.dumps(read_snapshot(api, query['project'], query['ref'])))
 
 
 if __name__ == '__main__':

@@ -1,11 +1,15 @@
 override_data {
   target = data.external.existing
   values = {
-    result = { config = "{}", file_path = "renovate.json", document = "{}", embedded = "false" }
+    result = { config = "{}", file_path = "renovate.json", document = "{}", embedded = "false", commit_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", source_sha256 = "" }
   }
 }
 
-mock_provider "gitlab" {}
+mock_provider "gitlab" {
+  mock_data "gitlab_project" {
+    defaults = { web_url = "https://gitlab.com/example/platform" }
+  }
+}
 mock_provider "null" {}
 
 run "opt_in_proposes_config" {
@@ -31,19 +35,19 @@ run "opt_in_proposes_config" {
     ]
   }
   assert {
-    condition     = length(gitlab_repository_file.this) == 1 && length(null_resource.merge_request) == 1
+    condition     = length(gitlab_branch.this) == 1 && length(null_resource.merge_request) == 1
     error_message = "Only opted-in projects get files and an MR."
   }
   assert {
-    condition     = startswith(gitlab_branch.this["platform"].name, "terraform/renovate-") && gitlab_branch.this["platform"].ref == "master"
-    error_message = "Create a dedicated branch from the configured default branch."
+    condition     = startswith(gitlab_branch.this["platform"].name, "terraform/renovate-") && gitlab_branch.this["platform"].ref == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    error_message = "Create a dedicated branch from the commit captured while reading the default branch."
   }
   assert {
-    condition     = !jsondecode(gitlab_repository_file.this["platform"].content).automerge && !jsondecode(gitlab_repository_file.this["platform"].content).platformAutomerge
+    condition     = !jsondecode(null_resource.merge_request["platform"].triggers.content).automerge && !jsondecode(null_resource.merge_request["platform"].triggers.content).platformAutomerge
     error_message = "Generated configuration must disable automerge."
   }
   assert {
-    condition     = contains(jsondecode(gitlab_repository_file.this["platform"].content).ignorePaths, "terramate/_terraform/**") && jsondecode(gitlab_repository_file.this["platform"].content).customManagers[0].fileFormat == "yaml"
+    condition     = contains(jsondecode(null_resource.merge_request["platform"].triggers.content).ignorePaths, "terramate/_terraform/**") && jsondecode(null_resource.merge_request["platform"].triggers.content).customManagers[0].fileFormat == "yaml"
     error_message = "Support source YAML extraction while ignoring generated files."
   }
   assert {
@@ -51,11 +55,11 @@ run "opt_in_proposes_config" {
     error_message = "MR must target configured default branch."
   }
   assert {
-    condition     = startswith(gitlab_repository_file.this["platform"].content, "{\n  ") && endswith(gitlab_repository_file.this["platform"].content, "\n}\n") && strcontains(gitlab_repository_file.this["platform"].content, "\n    {\n      ")
+    condition     = startswith(null_resource.merge_request["platform"].triggers.content, "{\n  ") && endswith(null_resource.merge_request["platform"].triggers.content, "\n}\n") && strcontains(null_resource.merge_request["platform"].triggers.content, "\n    {\n      ")
     error_message = "Render JSON with two-space nested indentation and a trailing newline."
   }
   assert {
-    condition     = jsonencode(jsondecode(gitlab_repository_file.this["platform"].content)) == jsonencode(output.configurations["platform"]) && output.source_branches["platform"] == "terraform/renovate-${substr(sha256(gitlab_repository_file.this["platform"].content), 0, 16)}"
+    condition     = jsonencode(jsondecode(null_resource.merge_request["platform"].triggers.content)) == jsonencode(output.configurations["platform"]) && output.source_branches["platform"] == "terraform/renovate-${substr(sha256(null_resource.merge_request["platform"].triggers.content), 0, 16)}"
     error_message = "Formatting must preserve JSON meaning and use the existing file-byte revision scheme."
   }
 }
@@ -66,7 +70,7 @@ run "disabled_has_no_resources" {
     gitlab_projects = [{ name = "platform" }]
   }
   assert {
-    condition     = length(gitlab_branch.this) == 0 && length(gitlab_repository_file.this) == 0 && length(null_resource.merge_request) == 0 && length(data.external.formatted) == 0
+    condition     = length(gitlab_branch.this) == 0 && length(null_resource.merge_request) == 0 && length(data.external.formatted) == 0
     error_message = "Omitted opt-in must create nothing."
   }
 }
@@ -122,10 +126,12 @@ run "explicit_repository_grouping_overrides_default" {
   override_data {
     target = data.external.existing["platform"]
     values = { result = {
-      config    = "{\"packageRules\":[{\"matchManagers\":[\"npm\"],\"groupName\":\"manual JavaScript group\",\"separateMajorMinor\":false,\"separateMinorPatch\":false}]}"
-      file_path = "renovate.json"
-      document  = "{}"
-      embedded  = "false"
+      config        = "{\"packageRules\":[{\"matchManagers\":[\"npm\"],\"groupName\":\"manual JavaScript group\",\"separateMajorMinor\":false,\"separateMinorPatch\":false}]}"
+      file_path     = "renovate.json"
+      document      = "{}"
+      embedded      = "false"
+      commit_sha    = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      source_sha256 = ""
     } }
   }
   variables {
@@ -197,7 +203,7 @@ run "preserve_existing_policy_and_alternate_path" {
   override_data {
     target = data.external.existing["platform"]
     values = { result = {
-      config    = <<-JSON
+      config        = <<-JSON
         {
           "schedule": ["before 5am"],
           "labels": ["existing"],
@@ -213,9 +219,11 @@ run "preserve_existing_policy_and_alternate_path" {
           }]
         }
       JSON
-      file_path = ".gitlab/renovate.json"
-      document  = "{}"
-      embedded  = "false"
+      file_path     = ".gitlab/renovate.json"
+      document      = "{}"
+      embedded      = "false"
+      commit_sha    = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      source_sha256 = ""
     } }
   }
   variables {
@@ -223,7 +231,7 @@ run "preserve_existing_policy_and_alternate_path" {
     gitlab_projects = [{ name = "platform", renovate = { enabled = true } }]
   }
   assert {
-    condition     = gitlab_repository_file.this["platform"].file_path == ".gitlab/renovate.json" && output.configurations["platform"].schedule[0] == "before 5am" && output.configurations["platform"].labels[0] == "existing"
+    condition     = null_resource.merge_request["platform"].triggers.file_path == ".gitlab/renovate.json" && output.configurations["platform"].schedule[0] == "before 5am" && output.configurations["platform"].labels[0] == "existing"
     error_message = "Adoption must retain the existing location, schedule and labels."
   }
   assert {
@@ -241,10 +249,12 @@ run "preserve_embedded_package_manifest" {
   override_data {
     target = data.external.existing["platform"]
     values = { result = {
-      config    = "{\"labels\":[\"existing\"]}"
-      document  = "{\"name\":\"example\",\"dependencies\":{\"example\":\"1.0.0\"},\"renovate\":{\"labels\":[\"existing\"]}}"
-      file_path = "package.json"
-      embedded  = "true"
+      config        = "{\"labels\":[\"existing\"]}"
+      document      = "{\"name\":\"example\",\"dependencies\":{\"example\":\"1.0.0\"},\"renovate\":{\"labels\":[\"existing\"]}}"
+      file_path     = "package.json"
+      embedded      = "true"
+      commit_sha    = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      source_sha256 = ""
     } }
   }
   variables {
@@ -252,11 +262,11 @@ run "preserve_embedded_package_manifest" {
     gitlab_projects = [{ name = "platform", renovate = { enabled = true } }]
   }
   assert {
-    condition     = jsondecode(gitlab_repository_file.this["platform"].content).dependencies.example == "1.0.0" && !jsondecode(gitlab_repository_file.this["platform"].content).renovate.automerge
+    condition     = jsondecode(null_resource.merge_request["platform"].triggers.content).dependencies.example == "1.0.0" && !jsondecode(null_resource.merge_request["platform"].triggers.content).renovate.automerge
     error_message = "Embedded config adoption must preserve unrelated package.json fields."
   }
   assert {
-    condition     = startswith(gitlab_repository_file.this["platform"].content, "{\n  ") && endswith(gitlab_repository_file.this["platform"].content, "\n}\n") && strcontains(gitlab_repository_file.this["platform"].content, "\n  \"renovate\": {\n")
+    condition     = startswith(null_resource.merge_request["platform"].triggers.content, "{\n  ") && endswith(null_resource.merge_request["platform"].triggers.content, "\n}\n") && strcontains(null_resource.merge_request["platform"].triggers.content, "\n  \"renovate\": {\n")
     error_message = "An embedded package.json config must also be human-readable JSON."
   }
 }
@@ -281,8 +291,8 @@ run "new_policy_gets_fresh_target_branch" {
     repository_defaults = { ignore_paths = ["new-generated-output/**"] }
   }
   assert {
-    condition     = output.source_branches["platform"] != run.same_policy_has_stable_revision_branch.source_branches["platform"] && gitlab_branch.this["platform"].ref == "master" && null_resource.merge_request["platform"].triggers.source_branch == output.source_branches["platform"]
-    error_message = "New policy content must create a fresh branch from the current target and use it for the MR."
+    condition     = output.source_branches["platform"] != run.same_policy_has_stable_revision_branch.source_branches["platform"] && gitlab_branch.this["platform"].ref == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" && null_resource.merge_request["platform"].triggers.source_branch == output.source_branches["platform"]
+    error_message = "New policy content must create a fresh branch from the captured target commit and use it for the MR."
   }
 }
 
@@ -304,10 +314,12 @@ run "existing_preset_order_survives_shared_duplicates" {
   override_data {
     target = data.external.existing["platform"]
     values = { result = {
-      config    = "{\"extends\":[\":disableDependencyDashboard\",\":dependencyDashboard\"]}"
-      file_path = "renovate.json"
-      document  = "{}"
-      embedded  = "false"
+      config        = "{\"extends\":[\":disableDependencyDashboard\",\":dependencyDashboard\"]}"
+      file_path     = "renovate.json"
+      document      = "{}"
+      embedded      = "false"
+      commit_sha    = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      source_sha256 = ""
     } }
   }
   variables {
@@ -318,5 +330,32 @@ run "existing_preset_order_survives_shared_duplicates" {
   assert {
     condition     = output.configurations["platform"].extends == tolist(["config:recommended", ":disableDependencyDashboard", ":dependencyDashboard"])
     error_message = "Deduplication must preserve the order of the higher-priority existing preset sequence."
+  }
+}
+
+run "proposal_uses_captured_snapshot_and_authoritative_project_url" {
+  command = plan
+  override_data {
+    target = data.external.existing["platform"]
+    values = { result = {
+      config        = "{}"
+      file_path     = "renovate.json"
+      document      = "{}"
+      embedded      = "false"
+      commit_sha    = "cccccccccccccccccccccccccccccccccccccccc"
+      source_sha256 = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    } }
+  }
+  variables {
+    project_ids     = { platform = "42" }
+    gitlab_projects = [{ name = "platform", renovate = { enabled = true } }]
+  }
+  assert {
+    condition     = gitlab_branch.this["platform"].ref == "cccccccccccccccccccccccccccccccccccccccc" && null_resource.merge_request["platform"].triggers.source_content_sha256 == "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    error_message = "Proposal publication must retain the exact commit and source-file digest captured by discovery."
+  }
+  assert {
+    condition     = null_resource.merge_request["platform"].triggers.project_url == "https://gitlab.com/example/platform" && data.external.existing["platform"].query.project_url == "https://gitlab.com/example/platform"
+    error_message = "Both authenticated helpers must receive the project URL from the GitLab provider."
   }
 }

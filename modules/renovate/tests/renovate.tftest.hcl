@@ -56,12 +56,23 @@ run "missing_secret_rejected" {
   expect_failures = [helm_release.this]
 }
 
-run "empty_allowlist_rejected" {
+run "empty_allowlist_suspends_installed_worker" {
   command = plan
   variables {
-    install = { enabled = true, existing_secret = "renovate-credentials" }
+    install = { enabled = true, existing_secret = "renovate-credentials", suspend = false }
   }
-  expect_failures = [helm_release.this]
+  assert {
+    condition     = length(helm_release.this) == 1 && output.installation != null
+    error_message = "An enabled worker must remain installed when its allowlist becomes empty."
+  }
+  assert {
+    condition     = yamldecode(helm_release.this["renovate"].values[0]).cronjob.suspend
+    error_message = "An empty allowlist must force suspension even when suspend=false is requested."
+  }
+  assert {
+    condition     = length(jsondecode(yamldecode(helm_release.this["renovate"].values[0]).renovate.config).repositories) == 0 && !jsondecode(yamldecode(helm_release.this["renovate"].values[0]).renovate.config).autodiscover
+    error_message = "An empty worker must publish an empty explicit allowlist with discovery disabled."
+  }
 }
 
 run "invalid_cron_ranges_rejected" {

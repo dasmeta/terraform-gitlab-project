@@ -50,6 +50,10 @@ It preserves existing schedule, labels, manager restrictions and package rules,
 including configs under .gitlab, .renovaterc files and package.json's renovate
 field. It does not create a second root config when another supported file exists.
 Python 3 and GITLAB_TOKEN (or GITLAB_API_TOKEN) are needed during plan and apply.
+The API endpoint must match the project's URL returned by the configured GitLab
+provider and, when set, GITLAB_BASE_URL. These checks run before reading the
+helper token; HTTP redirects are rejected. For self-managed GitLab, set endpoint
+to that server's API URL rather than leaving the GitLab.com default.
 For JSONC/JSON5 syntax install Python's optional json5 package in that runner.
 The proposal serializes those documents as JSON with two-space indentation and
 a trailing newline, preserving their settings and path. This also applies to
@@ -69,11 +73,29 @@ Do not edit/delete the ownership record by hand; malformed records fail safely.
 
 Each effective config revision uses source_branch as a prefix plus a file-content hash.
 Changed file bytes, including formatting changes, get a fresh branch from the
-target, avoiding stale squash-merge ancestry. Unchanged files keep the same
-revision. Terraform owns proposal
-branches/files; configure MR source-branch retention. New revisions replace the
-old proposal resources. Existing open MRs for the same branch are reused and an
-identical already-merged file does not create an empty proposal.
+exact target commit inspected during discovery, avoiding stale squash-merge
+ancestry. Every discovery request uses that captured commit SHA. Unchanged files
+keep the same revision, even when unrelated target commits are added.
+
+Before publishing, the helper checks the current active config path and exact
+original document bytes against the plan, including the whole package.json for
+embedded configurations. If either changed, apply fails with a request for a new
+plan before writing. The pinned branch baseline also protects changes made after
+that check through Git's merge ancestry. Source-file updates use last_commit_id
+to reject concurrent changes. Manual edits to a proposal file are not overwritten.
+
+Terraform owns proposal branches; a helper publishes files only when their bytes
+differ. Existing open MRs are reused. An identical already-merged config returns
+success before attempting any write, including after a deleted source branch is
+recreated. Deleting an unmerged source branch reruns publication. New revisions
+replace old proposal branches.
+
+This submodule requires Terraform 1.7 or newer. Upgrading from the native
+gitlab_repository_file implementation automatically forgets its legacy state
+instances using a removed block with destroy = false: remote files are retained.
+Review the plan's "no longer managed" actions; no manual state removal is needed.
+File-only drift on an existing proposal is checked when publication runs; it is
+not continuously reconciled by a gitlab_repository_file resource.
 
 Automerge is disabled at top level and by a final universal package rule, including
 lock-file maintenance. The paired worker additionally forces manual merging.
@@ -117,7 +139,7 @@ local platform and extract-only dry-run without inherited bot/cloud credentials.
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.7 |
 | <a name="requirement_external"></a> [external](#requirement\_external) | ~> 2.3 |
 | <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | ~> 19.0 |
 | <a name="requirement_null"></a> [null](#requirement\_null) | ~> 3.2 |
@@ -139,16 +161,16 @@ No modules.
 | Name | Type |
 |------|------|
 | [gitlab_branch.this](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/branch) | resource |
-| [gitlab_repository_file.this](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/repository_file) | resource |
 | [null_resource.merge_request](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [external_external.existing](https://registry.terraform.io/providers/hashicorp/external/latest/docs/data-sources/external) | data source |
 | [external_external.formatted](https://registry.terraform.io/providers/hashicorp/external/latest/docs/data-sources/external) | data source |
+| [gitlab_project.authority](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/data-sources/project) | data source |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_endpoint"></a> [endpoint](#input\_endpoint) | GitLab API endpoint for configuration merge requests. | `string` | `"https://gitlab.com/api/v4"` | no |
+| <a name="input_endpoint"></a> [endpoint](#input\_endpoint) | GitLab API endpoint for configuration discovery and merge requests. Must match the configured GitLab provider's project URL and GITLAB\_BASE\_URL when set. | `string` | `"https://gitlab.com/api/v4"` | no |
 | <a name="input_gitlab_projects"></a> [gitlab\_projects](#input\_gitlab\_projects) | Projects whose Renovate configuration should be proposed through merge requests. | <pre>list(object({<br/>    name           = string<br/>    default_branch = optional(string, "main")<br/>    renovate = optional(object({<br/>      enabled             = optional(bool, false)<br/>      source_branch       = optional(string, "terraform/renovate")<br/>      merge_request_title = optional(string, "chore: configure Renovate")<br/>      extends             = optional(list(string), ["config:recommended"])<br/>      include_paths       = optional(list(string), [])<br/>      ignore_paths        = optional(list(string), [])<br/>      custom_managers = optional(list(object({<br/>        custom_type           = optional(string, "regex")<br/>        manager_file_patterns = list(string)<br/>        match_strings         = list(string)<br/>        file_format           = optional(string)<br/>        datasource_template   = optional(string)<br/>        dep_name_template     = optional(string)<br/>        package_name_template = optional(string)<br/>        versioning_template   = optional(string)<br/>        registry_url_template = optional(string)<br/>      })), [])<br/>    }), {})<br/>  }))</pre> | `[]` | no |
 | <a name="input_managed_file_paths"></a> [managed\_file\_paths](#input\_managed\_file\_paths) | Exact Terraform-owned repository paths, indexed by project name, protected from updates through anchored file rules. Protecting a lockfile also disables updates that would change it. | `map(list(string))` | `{}` | no |
 | <a name="input_project_ids"></a> [project\_ids](#input\_project\_ids) | Managed project IDs indexed by gitlab\_projects[].name. | `map(string)` | `{}` | no |
@@ -159,5 +181,5 @@ No modules.
 | Name | Description |
 |------|-------------|
 | <a name="output_configurations"></a> [configurations](#output\_configurations) | Generated nonsecret Renovate repository configurations indexed by project name. |
-| <a name="output_source_branches"></a> [source\_branches](#output\_source\_branches) | Content-revision branches holding configuration proposals, created from the current target for each policy revision. |
+| <a name="output_source_branches"></a> [source\_branches](#output\_source\_branches) | Content-revision branches holding configuration proposals, created from the captured target commit for each policy revision. |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

@@ -37,6 +37,9 @@ locals {
     }
   }
 
+  # Keep an enabled release updateable after its last repository opts out.
+  effective_suspend = var.install.suspend || length(var.repositories) == 0
+
   helm_values = {
     fullnameOverride = var.install.release_name
     existingSecret   = trimspace(var.install.existing_secret)
@@ -44,7 +47,7 @@ locals {
       schedule                   = var.install.schedule
       timeZone                   = var.install.time_zone
       concurrencyPolicy          = "Forbid"
-      suspend                    = var.install.suspend
+      suspend                    = local.effective_suspend
       successfulJobsHistoryLimit = 1
       failedJobsHistoryLimit     = 3
     }

@@ -34,6 +34,10 @@ Terraform-owned CI files are protected from updates by exact file rules derived
 from generator outputs. Existing Renovate schedules/rules and supported config
 locations are preserved; an ownership record permits later removal of generated additions.
 Each changed effective policy uses a fresh content-revision proposal branch.
+Discovery and branch creation use the same commit SHA. Publication rejects a
+saved plan when the active configuration has since changed, and skips identical
+already-merged files before writing. API helpers validate the endpoint against
+the provider's project URL and reject redirects before sending credentials.
 
 Ordinary dependency updates are grouped by the manager that detected them, using
 `{{manager}} dependencies`. Updates are grouped separately into major, minor and
@@ -52,6 +56,9 @@ credential source. Tokens passed to Terraform are stored in state and Helm
 release values; never commit them in YAML or HCL.
 The shared worker defaults to `prHourlyLimit: 0` (no hourly MR cap), with existing
 concurrent limits unchanged. Repository configuration can override this default.
+An empty repository allowlist retains the installed worker and forces its
+CronJob to suspend; adding repositories resumes it unless suspend was requested.
+Existing Jobs are unaffected by CronJob suspension.
 See [standalone usage](examples/renovate), [fleet/root/YAML usage](examples/renovate_root),
 and [configuration lifecycle](modules/renovate_repository).
 
@@ -60,12 +67,18 @@ plan/apply for read-only config discovery and MR creation; JSONC/JSON5 syntax
 requires optional Python json5. Custom YAML semantics and encrypted-file workflows
 must be defined explicitly once, rather than guessed per repository.
 
+The root module requires Terraform 1.9 or newer (including its existing
+cross-variable validations). The repository-only submodule requires 1.7 for
+non-destructive migration of legacy file state; the standalone worker requires
+1.3. Upgrading forgets old Renovate gitlab_repository_file state without deleting
+remote files; review those "no longer managed" actions in the plan.
+
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.9 |
 | <a name="requirement_external"></a> [external](#requirement\_external) | ~> 2.3 |
 | <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | ~> 19.0 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.17.0 |
