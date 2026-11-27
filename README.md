@@ -38,6 +38,9 @@ The revision also includes the original file hash/path so a new plan recovers
 after formatting-only edits. Publication payloads are materialized on apply
 through hashicorp/local instead of process environment; run terraform init when
 upgrading to install that provider.
+The durable publisher is separate from the local payload: restoring files on a
+clean CI runner does not repeat publication. Manually closed proposal MRs stay
+closed until reopened by a user or superseded by a new proposal revision.
 Discovery and branch creation use the same commit SHA. Publication rejects a
 saved plan when the active configuration has since changed, and skips identical
 already-merged files before writing. API helpers validate the endpoint against

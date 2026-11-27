@@ -23,7 +23,7 @@ def digest(value):
 class MergeRequestTests(unittest.TestCase):
     def invoke(self, target=ORIGINAL, expected=ORIGINAL, source=ORIGINAL,
                desired=DESIRED, target_path='renovate.json', config_path='renovate.json',
-               existing=False, race=False, status=200, update_status=200, mismatch=False, corrupt=False, missing=False):
+               existing=False, race=False, status=200, update_status=200, mismatch=False, corrupt=False, missing=False, closed=False):
         calls = []
         state = {'mr_posts': 0}
 
@@ -60,7 +60,10 @@ class MergeRequestTests(unittest.TestCase):
                     else:
                         self.respond(200, {'content_sha256': digest(source), 'last_commit_id': 'b' * 40})
                 elif path.endswith('/merge_requests'):
-                    self.respond(200, [{'iid': 7}] if existing or (race and state['mr_posts']) else [])
+                    found = ([{'iid': 7, 'state': 'opened'}] if existing or (race and state['mr_posts']) else [])
+                    if closed and query.get('state') == ['all']:
+                        found.append({'iid': 6, 'state': 'closed'})
+                    self.respond(200, found)
                 else:
                     self.respond(404, {})
 
@@ -128,6 +131,18 @@ class MergeRequestTests(unittest.TestCase):
         self.assertTrue(all(call[0] == 'GET' for call in calls))
         self.assertIn('!7', result.stdout)
 
+    def test_closed_configuration_mr_is_not_created_again(self):
+        result, calls = self.invoke(source=ORIGINAL, closed=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(all(call[0] == 'GET' for call in calls), calls)
+        self.assertIn('closed', result.stdout)
+
+    def test_open_mr_is_reused_when_older_closed_mr_exists(self):
+        result, calls = self.invoke(source=DESIRED, existing=True, closed=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(all(call[0] == 'GET' for call in calls))
+        self.assertIn('!7', result.stdout)
+
     def test_recovers_duplicate_mr_creation_race(self):
         result, calls = self.invoke(source=DESIRED, race=True)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -183,7 +198,7 @@ class MergeRequestTests(unittest.TestCase):
         result, calls = self.invoke(update_status=400)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('400', result.stderr)
-        self.assertFalse(any('/merge_requests' in call[1] for call in calls))
+        self.assertFalse(any(call[0] != 'GET' and '/merge_requests' in call[1] for call in calls))
 
     def test_alternate_config_path_is_url_encoded(self):
         result, calls = self.invoke(target_path='.gitlab/renovate.json', config_path='.gitlab/renovate.json')

@@ -14,11 +14,12 @@ class PublicationTransportTest(state_tests.StateMigrationTest):
     test_legacy_file_is_forgotten_without_delete = None
     test_branch_recreation_replaces_publisher_with_unchanged_name_and_content = None
 
-    def test_large_file_is_materialized_before_every_publication(self):
+    def test_large_file_cache_and_publication_have_separate_lifecycles(self):
         source = (MODULE / 'main.tf').read_text()
         self.assertIn('resource "local_file" "proposal"', source,
                       'Publication needs an apply-time file instead of an environment payload.')
         resource = state_tests.hcl_block(source, 'resource "local_file" "proposal"')
+        publication = state_tests.hcl_block(source, 'resource "null_resource" "publish"')
         binaries = [
             ('hashicorp', name, self.installed_provider('hashicorp', name, version))
             for name, version in [('local', '2.*'), ('null', '3.*')]
@@ -63,12 +64,14 @@ resource "null_resource" "merge_request" {
     source_content_sha256 = ""
   }
 }
-''' + resource)
+''' + resource + '\n' + publication)
             scripts = work / 'scripts'
             scripts.mkdir()
             (scripts / 'ensure_merge_request.py').write_text('''
 import hashlib, os
 from pathlib import Path
+if Path('fail-publication').exists():
+    raise SystemExit(1)
 assert 'GITLAB_CONFIG_CONTENT' not in os.environ
 raw = Path(os.environ['GITLAB_CONFIG_CONTENT_FILE']).read_bytes()
 assert len(raw) > 1024 * 1024
@@ -81,11 +84,14 @@ with marker.open('a') as stream:
             cli_config.write_text('disable_checkpoint = true\n')
             environment = dict(self.environment, TF_CLI_CONFIG_FILE=str(cli_config))
 
-            def terraform(*args):
+            def terraform(*args, succeeds=True):
                 import subprocess
                 result = subprocess.run([self.terraform, *args], cwd=work, env=environment,
                                         text=True, capture_output=True, timeout=60)
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                if succeeds:
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                else:
+                    self.assertNotEqual(result.returncode, 0, 'The synthetic publication must fail.')
                 return result.stdout
 
             terraform('init', '-backend=false', '-input=false', '-no-color', f'-plugin-dir={mirror}')
@@ -97,6 +103,18 @@ with marker.open('a') as stream:
             self.assertEqual(files[0].read_bytes(), content.encode())
             self.assertEqual(files[0].stat().st_mode & 0o777, 0o600)
             self.assertEqual(files[0].parent.stat().st_mode & 0o777, 0o700)
+            # Normal CI refresh with state retained and only runner cache lost.
+            files[0].unlink()
+            terraform('plan', '-input=false', '-no-color', '-out=clean-runner.tfplan')
+            cache_plan = json.loads(terraform('show', '-json', 'clean-runner.tfplan'))
+            actions = {entry['address']: entry['change']['actions'] for entry in cache_plan['resource_changes']}
+            self.assertEqual(actions['local_file.proposal["platform"]'], ['create'])
+            self.assertEqual(actions['null_resource.publish["platform"]'], ['no-op'])
+            self.assertEqual(actions['null_resource.merge_request["platform"]'], ['no-op'])
+            terraform('apply', '-input=false', '-no-color', 'clean-runner.tfplan')
+            self.assertEqual(files[0].read_bytes(), content.encode())
+            self.assertEqual((work / 'publications.txt').read_text().splitlines(), [expected],
+                             'Restoring runner cache must not invoke the publication helper.')
             terraform('plan', '-refresh=false', '-input=false', '-no-color',
                       '-replace=null_resource.merge_request["platform"]', '-out=retry.tfplan')
             # A saved plan must materialize the file on its apply runner, even if
@@ -104,5 +122,22 @@ with marker.open('a') as stream:
             files[0].unlink()
             terraform('apply', '-input=false', '-no-color', 'retry.tfplan')
             self.assertEqual((work / 'publications.txt').read_text().splitlines(), [expected, expected])
+            # An ordinary proposal-content change still publishes exactly once.
+            changed = content + ' '
+            (work / 'input.auto.tfvars.json').write_text(json.dumps({'payload': changed}))
+            terraform('apply', '-auto-approve', '-input=false', '-no-color')
+            changed_digest = hashlib.sha256(changed.encode()).hexdigest()
+            self.assertEqual((work / 'publications.txt').read_text().splitlines(),
+                             [expected, expected, changed_digest])
+            # A failed publication remains retryable with a clean runner cache.
+            (work / 'fail-publication').touch()
+            terraform('apply', '-auto-approve', '-input=false', '-no-color',
+                      '-replace=null_resource.publish["platform"]', succeeds=False)
+            (work / 'fail-publication').unlink()
+            files[0].unlink()
+            terraform('plan', '-input=false', '-no-color', '-out=failed-retry.tfplan')
+            terraform('apply', '-input=false', '-no-color', 'failed-retry.tfplan')
+            self.assertEqual((work / 'publications.txt').read_text().splitlines(),
+                             [expected, expected, changed_digest, changed_digest])
             plan = terraform('plan', '-input=false', '-no-color', '-out=stable.tfplan')
             self.assertIn('No changes.', plan)

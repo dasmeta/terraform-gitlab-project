@@ -91,16 +91,31 @@ Terraform owns proposal branches; a helper publishes files only when their bytes
 differ. Existing open MRs are reused. An identical already-merged config returns
 success before attempting any write, including after a deleted source branch is
 recreated. Deleting an unmerged source branch reruns publication. New revisions
-replace old proposal branches.
+replace old proposal branches. A manually closed MR for the same proposal branch
+is left closed, including during upgrade or explicit retry. An existing open MR
+takes priority over older closed MRs.
 
 Publication content is materialized during apply by hashicorp/local (~>2.5), with
 0600 file and 0700 directory permissions under path.root/.terraform/renovate.
-The create-time helper runs on that local_file after it is written, receiving
-only the file path and checksum in its environment. Large embedded package.json
-documents therefore do not enter exec argv/environment. The payload checksum is
-verified before API requests. The local_file is replaced whenever its
-null_resource publication marker is replaced, ensuring that retries, script
-changes and branch recreation materialize the payload before publishing.
+The proposal-generation marker is null_resource.merge_request. Its replacement
+also replaces the payload. The separate null_resource.publish waits for that
+file and runs the helper only when its generation changes or publication needs
+retrying. Its triggers use the generation ID, not the disposable file's ID.
+Restoring a missing file on a clean runner therefore restores only local cache;
+it does not invoke the publication helper. The helper receives only the path and
+checksum in its environment, keeping large JSON out of exec argv/environment,
+and verifies the checksum before API requests.
+
+For an intentional forced retry, replace the generation marker
+null_resource.merge_request["project-name"]. That also schedules payload
+materialization when applying a saved plan. Replacing only the downstream
+publisher does not force a healthy payload to be rewritten. If an unchanged
+payload disappears after planning a publisher-only retry, apply fails before API
+requests; make a fresh plan so missing cache is detected. Keep the module checkout
+available on the apply runner too.
+
+For a scoped apply, target null_resource.publish["project-name"] or the complete
+repository submodule; targeting local_file.proposal alone restores payload only.
 Run terraform init when upgrading to install the new provider. Existing proposal
 branches are replaced once to adopt snapshot-aware names. These local artifacts
 are disposable; a new plan detects missing files and recreates them on apply.
@@ -182,6 +197,7 @@ No modules.
 | [gitlab_branch.this](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/branch) | resource |
 | [local_file.proposal](https://registry.terraform.io/providers/hashicorp/local/latest/docs/resources/file) | resource |
 | [null_resource.merge_request](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
+| [null_resource.publish](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [external_external.existing](https://registry.terraform.io/providers/hashicorp/external/latest/docs/data-sources/external) | data source |
 | [external_external.formatted](https://registry.terraform.io/providers/hashicorp/external/latest/docs/data-sources/external) | data source |
 | [gitlab_project.authority](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/data-sources/project) | data source |

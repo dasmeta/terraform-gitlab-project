@@ -36,7 +36,7 @@ run "opt_in_proposes_config" {
     ]
   }
   assert {
-    condition     = length(gitlab_branch.this) == 1 && length(null_resource.merge_request) == 1 && length(local_file.proposal) == 1
+    condition     = length(gitlab_branch.this) == 1 && length(null_resource.merge_request) == 1 && length(local_file.proposal) == 1 && length(null_resource.publish) == 1
     error_message = "Only opted-in projects get files and an MR."
   }
   assert {
@@ -71,7 +71,7 @@ run "disabled_has_no_resources" {
     gitlab_projects = [{ name = "platform" }]
   }
   assert {
-    condition     = length(gitlab_branch.this) == 0 && length(null_resource.merge_request) == 0 && length(local_file.proposal) == 0 && length(data.external.formatted) == 0
+    condition     = length(gitlab_branch.this) == 0 && length(null_resource.merge_request) == 0 && length(local_file.proposal) == 0 && length(null_resource.publish) == 0 && length(data.external.formatted) == 0
     error_message = "Omitted opt-in must create nothing."
   }
 }

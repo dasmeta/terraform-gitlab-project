@@ -28,6 +28,7 @@ removed {
   }
 }
 
+# Durable proposal generation; restoring runner cache never changes this ID.
 resource "null_resource" "merge_request" {
   for_each = local.projects
 
@@ -53,11 +54,10 @@ resource "null_resource" "merge_request" {
       filesha256("${path.module}/scripts/${script}")
     ]))
   }
-
 }
 
 # The resource writes content using the provider protocol, without placing it
-# in exec argv/environment. Every publication replacement materializes it first.
+# in exec argv/environment. Cache restoration has no publication side effect.
 resource "local_file" "proposal" {
   for_each = local.projects
 
@@ -75,6 +75,19 @@ resource "local_file" "proposal" {
     replace_triggered_by = [null_resource.merge_request[each.key]]
   }
 
+}
+
+# Completion is tracked separately from the disposable local payload. Cache
+# recreation orders dependencies but does not change publication triggers.
+resource "null_resource" "publish" {
+  for_each = local.projects
+
+  triggers = {
+    revision_id = null_resource.merge_request[each.key].id
+  }
+
+  depends_on = [local_file.proposal]
+
   provisioner "local-exec" {
     command = "python3 \"$RENOVATE_MR_SCRIPT\""
     environment = {
@@ -86,7 +99,7 @@ resource "local_file" "proposal" {
       GITLAB_TARGET_BRANCH           = null_resource.merge_request[each.key].triggers.target_branch
       GITLAB_MR_TITLE                = null_resource.merge_request[each.key].triggers.title
       GITLAB_CONFIG_PATH             = null_resource.merge_request[each.key].triggers.file_path
-      GITLAB_CONFIG_CONTENT_FILE     = abspath(self.filename)
+      GITLAB_CONFIG_CONTENT_FILE     = abspath(local_file.proposal[each.key].filename)
       GITLAB_CONFIG_CONTENT_SHA256   = null_resource.merge_request[each.key].triggers.content_sha256
       GITLAB_EXPECTED_CONTENT_SHA256 = null_resource.merge_request[each.key].triggers.source_content_sha256
     }

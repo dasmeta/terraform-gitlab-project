@@ -41,6 +41,16 @@ def main():
     if current['file_path'] != config_path or current['source_sha256'] != expected_digest:
         raise ValueError('Target configuration changed since plan; create a new Terraform plan before applying.')
 
+    path = f'/projects/{project}/merge_requests'
+    filters = {'source_branch': source, 'target_branch': target, 'scope': 'all'}
+    query = urllib.parse.urlencode(dict(filters, state='all', per_page=100))
+    existing = api.request('GET', path + '?' + query)
+    opened = next((mr for mr in existing if mr['state'] == 'opened'), None)
+    closed = next((mr for mr in existing if mr['state'] == 'closed'), None)
+    if closed and not opened:
+        print(f'Configuration MR !{closed["iid"]} is closed; leaving it closed.')
+        return
+
     file_path = f'/projects/{project}/repository/files/{urllib.parse.quote(config_path, safe="")}'
     try:
         source_file = api.request('GET', file_path + '?' + urllib.parse.urlencode({'ref': source}))
@@ -62,11 +72,8 @@ def main():
             body['last_commit_id'] = source_file['last_commit_id']
         api.request('POST' if source_file is None else 'PUT', file_path, body)
 
-    path = f'/projects/{project}/merge_requests'
-    query = urllib.parse.urlencode({'state': 'opened', 'source_branch': source, 'target_branch': target})
-    existing = api.request('GET', path + '?' + query)
-    if existing:
-        print(f'Reusing configuration MR !{existing[0]["iid"]}')
+    if opened:
+        print(f'Reusing configuration MR !{opened["iid"]}')
         return
     try:
         created = api.request('POST', path, {
@@ -79,6 +86,7 @@ def main():
     except urllib.error.HTTPError as exc:
         if exc.code != 409:
             raise
+        query = urllib.parse.urlencode(dict(filters, state='opened'))
         existing = api.request('GET', path + '?' + query)
         if not existing:
             raise
