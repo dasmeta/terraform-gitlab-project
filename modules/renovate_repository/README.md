@@ -50,6 +50,10 @@ It preserves existing schedule, labels, manager restrictions and package rules,
 including configs under .gitlab, .renovaterc files and package.json's renovate
 field. It does not create a second root config when another supported file exists.
 Python 3 and GITLAB_TOKEN (or GITLAB_API_TOKEN) are needed during plan and apply.
+The supported paired runtime is the self-hosted Helm worker. These configuration
+MRs can also be consumed by other Renovate deployments, but provisioning CI-based
+execution, adding bot users to projects and authorizing hosted/Mend apps are
+outside this submodule's scope.
 The API endpoint must match the project's URL returned by the configured GitLab
 provider and, when set, GITLAB_BASE_URL. These checks run before reading the
 helper token; HTTP redirects are rejected. For self-managed GitLab, set endpoint
@@ -120,10 +124,13 @@ Run terraform init when upgrading to install the new provider. Existing proposal
 branches are replaced once to adopt snapshot-aware names. These local artifacts
 are disposable; a new plan detects missing files and recreates them on apply.
 
-This submodule requires Terraform 1.7 or newer. Upgrading from the native
-gitlab_repository_file implementation automatically forgets its legacy state
-instances using a removed block with destroy = false: remote files are retained.
-Review the plan's "no longer managed" actions; no manual state removal is needed.
+This submodule requires Terraform 1.7 or newer. The removed block with
+destroy = false is only for early adopters who applied the native
+gitlab_repository_file implementation from earlier revisions of this PR. Those
+real test states are forgotten without deleting their remote files. The old
+resource was never part of a released main version, so new installations have
+nothing to migrate. Early adopters should review the plan's "no longer managed"
+actions; no manual state removal is needed.
 File-only drift on an existing proposal is checked when publication runs; it is
 not continuously reconciled by a gitlab_repository_file resource.
 

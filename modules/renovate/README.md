@@ -2,6 +2,9 @@
 
 Helm-only wrapper around the [upstream Renovate chart](https://github.com/renovatebot/helm-charts).
 Installs one CronJob, pinned to chart 46.440.2, with overlapping runs forbidden.
+This self-hosted Helm worker is the supported runtime. CI-based bot execution,
+hosted bot/app installation and bot membership in GitLab projects are not
+provisioned by this wrapper.
 Requires Kubernetes 1.27+ for CronJob time zones. Schedules use numeric five-field
 cron with wildcards, lists, ranges and positive steps; named days/months and macros
 are intentionally outside this bounded interface.

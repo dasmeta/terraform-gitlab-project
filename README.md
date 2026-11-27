@@ -26,6 +26,11 @@
 
 ## Renovate
 
+The supported bot runtime is the self-hosted Renovate CronJob deployed through
+this module's Helm worker. Repository configuration MRs can be used with other
+Renovate deployments, but adding bot users to projects, configuring CI runners,
+and installing or authorizing hosted/Mend apps are outside this module's scope.
+
 Set `gitlab_projects[].renovate.enabled = true` for any ordinary repository.
 The generated policy leaves native dependency managers unrestricted; no repository
 names or stack profiles are embedded in the module. Shared presets/custom format
@@ -75,10 +80,12 @@ requires optional Python json5. Custom YAML semantics and encrypted-file workflo
 must be defined explicitly once, rather than guessed per repository.
 
 The root module requires Terraform 1.9 or newer (including its existing
-cross-variable validations). The repository-only submodule requires 1.7 for
-non-destructive migration of legacy file state; the standalone worker requires
-1.3. Upgrading forgets old Renovate gitlab_repository_file state without deleting
-remote files; review those "no longer managed" actions in the plan.
+cross-variable validations). The repository-only submodule requires 1.7; the
+standalone worker requires 1.3. A non-destructive removed block is retained only
+for early adopters who applied earlier revisions of this PR. It forgets their
+old Renovate gitlab_repository_file state without deleting remote files. This
+is not a migration from a released main version; new installations have no old
+file resource to forget.
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
