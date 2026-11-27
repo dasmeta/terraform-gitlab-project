@@ -108,7 +108,12 @@ locals {
     })
   }
   source_branches = {
-    for name, project in local.projects : name => "${project.renovate.source_branch}-${substr(sha256(local.file_contents[name]), 0, 16)}"
+    for name, project in local.projects : name => "${project.renovate.source_branch}-${substr(sha256(jsonencode({
+      content_sha256 = sha256(local.file_contents[name])
+      source_sha256  = data.external.existing[name].result.source_sha256
+      file_path      = data.external.existing[name].result.file_path
+      target_branch  = project.default_branch
+    })), 0, 16)}"
   }
   documents = {
     for name, config in local.configs : name => jsondecode(data.external.existing[name].result.embedded == "true" ? jsonencode(merge(

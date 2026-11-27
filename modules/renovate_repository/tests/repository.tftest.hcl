@@ -11,6 +11,7 @@ mock_provider "gitlab" {
   }
 }
 mock_provider "null" {}
+mock_provider "local" {}
 
 run "opt_in_proposes_config" {
   command = plan
@@ -35,7 +36,7 @@ run "opt_in_proposes_config" {
     ]
   }
   assert {
-    condition     = length(gitlab_branch.this) == 1 && length(null_resource.merge_request) == 1
+    condition     = length(gitlab_branch.this) == 1 && length(null_resource.merge_request) == 1 && length(local_file.proposal) == 1
     error_message = "Only opted-in projects get files and an MR."
   }
   assert {
@@ -43,11 +44,11 @@ run "opt_in_proposes_config" {
     error_message = "Create a dedicated branch from the commit captured while reading the default branch."
   }
   assert {
-    condition     = !jsondecode(null_resource.merge_request["platform"].triggers.content).automerge && !jsondecode(null_resource.merge_request["platform"].triggers.content).platformAutomerge
+    condition     = !jsondecode(local_file.proposal["platform"].content).automerge && !jsondecode(local_file.proposal["platform"].content).platformAutomerge
     error_message = "Generated configuration must disable automerge."
   }
   assert {
-    condition     = contains(jsondecode(null_resource.merge_request["platform"].triggers.content).ignorePaths, "terramate/_terraform/**") && jsondecode(null_resource.merge_request["platform"].triggers.content).customManagers[0].fileFormat == "yaml"
+    condition     = contains(jsondecode(local_file.proposal["platform"].content).ignorePaths, "terramate/_terraform/**") && jsondecode(local_file.proposal["platform"].content).customManagers[0].fileFormat == "yaml"
     error_message = "Support source YAML extraction while ignoring generated files."
   }
   assert {
@@ -55,12 +56,12 @@ run "opt_in_proposes_config" {
     error_message = "MR must target configured default branch."
   }
   assert {
-    condition     = startswith(null_resource.merge_request["platform"].triggers.content, "{\n  ") && endswith(null_resource.merge_request["platform"].triggers.content, "\n}\n") && strcontains(null_resource.merge_request["platform"].triggers.content, "\n    {\n      ")
+    condition     = startswith(local_file.proposal["platform"].content, "{\n  ") && endswith(local_file.proposal["platform"].content, "\n}\n") && strcontains(local_file.proposal["platform"].content, "\n    {\n      ")
     error_message = "Render JSON with two-space nested indentation and a trailing newline."
   }
   assert {
-    condition     = jsonencode(jsondecode(null_resource.merge_request["platform"].triggers.content)) == jsonencode(output.configurations["platform"]) && output.source_branches["platform"] == "terraform/renovate-${substr(sha256(null_resource.merge_request["platform"].triggers.content), 0, 16)}"
-    error_message = "Formatting must preserve JSON meaning and use the existing file-byte revision scheme."
+    condition     = jsonencode(jsondecode(local_file.proposal["platform"].content)) == jsonencode(output.configurations["platform"]) && output.source_branches["platform"] == "terraform/renovate-${substr(sha256(jsonencode({ content_sha256 = sha256(local_file.proposal["platform"].content), source_sha256 = data.external.existing["platform"].result.source_sha256, file_path = data.external.existing["platform"].result.file_path, target_branch = "master" })), 0, 16)}"
+    error_message = "Formatting must preserve JSON meaning and use the snapshot revision scheme."
   }
 }
 
@@ -70,7 +71,7 @@ run "disabled_has_no_resources" {
     gitlab_projects = [{ name = "platform" }]
   }
   assert {
-    condition     = length(gitlab_branch.this) == 0 && length(null_resource.merge_request) == 0 && length(data.external.formatted) == 0
+    condition     = length(gitlab_branch.this) == 0 && length(null_resource.merge_request) == 0 && length(local_file.proposal) == 0 && length(data.external.formatted) == 0
     error_message = "Omitted opt-in must create nothing."
   }
 }
@@ -262,11 +263,11 @@ run "preserve_embedded_package_manifest" {
     gitlab_projects = [{ name = "platform", renovate = { enabled = true } }]
   }
   assert {
-    condition     = jsondecode(null_resource.merge_request["platform"].triggers.content).dependencies.example == "1.0.0" && !jsondecode(null_resource.merge_request["platform"].triggers.content).renovate.automerge
+    condition     = jsondecode(local_file.proposal["platform"].content).dependencies.example == "1.0.0" && !jsondecode(local_file.proposal["platform"].content).renovate.automerge
     error_message = "Embedded config adoption must preserve unrelated package.json fields."
   }
   assert {
-    condition     = startswith(null_resource.merge_request["platform"].triggers.content, "{\n  ") && endswith(null_resource.merge_request["platform"].triggers.content, "\n}\n") && strcontains(null_resource.merge_request["platform"].triggers.content, "\n  \"renovate\": {\n")
+    condition     = startswith(local_file.proposal["platform"].content, "{\n  ") && endswith(local_file.proposal["platform"].content, "\n}\n") && strcontains(local_file.proposal["platform"].content, "\n  \"renovate\": {\n")
     error_message = "An embedded package.json config must also be human-readable JSON."
   }
 }
@@ -357,5 +358,71 @@ run "proposal_uses_captured_snapshot_and_authoritative_project_url" {
   assert {
     condition     = null_resource.merge_request["platform"].triggers.project_url == "https://gitlab.com/example/platform" && data.external.existing["platform"].query.project_url == "https://gitlab.com/example/platform"
     error_message = "Both authenticated helpers must receive the project URL from the GitLab provider."
+  }
+}
+
+run "formatting_only_replan_gets_fresh_snapshot_branch" {
+  command = plan
+  override_data {
+    target = data.external.existing
+    values = {
+      result = { config = "{}", file_path = "renovate.json", document = "{}", embedded = "false", commit_sha = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", source_sha256 = "formatting-only-snapshot-digest" }
+    }
+  }
+  variables {
+    project_ids     = { platform = "42" }
+    gitlab_projects = [{ name = "platform", renovate = { enabled = true } }]
+  }
+  assert {
+    condition     = jsonencode(output.configurations["platform"]) == jsonencode(run.same_policy_has_stable_revision_branch.configurations["platform"]) && output.source_branches["platform"] != run.same_policy_has_stable_revision_branch.source_branches["platform"] && gitlab_branch.this["platform"].ref == "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    error_message = "Replanning a formatting-only edit must retain desired JSON but choose a new branch at the fresh snapshot."
+  }
+}
+
+run "unrelated_commit_keeps_snapshot_revision" {
+  command = plan
+  override_data {
+    target = data.external.existing
+    values = {
+      result = { config = "{}", file_path = "renovate.json", document = "{}", embedded = "false", commit_sha = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", source_sha256 = "" }
+    }
+  }
+  variables {
+    project_ids     = { platform = "42" }
+    gitlab_projects = [{ name = "platform", renovate = { enabled = true } }]
+  }
+  assert {
+    condition     = output.source_branches["platform"] == run.same_policy_has_stable_revision_branch.source_branches["platform"]
+    error_message = "An unrelated target commit must not change a proposal revision when source bytes/path are unchanged."
+  }
+}
+
+run "moved_active_config_gets_fresh_snapshot_revision" {
+  command = plan
+  override_data {
+    target = data.external.existing
+    values = {
+      result = { config = "{}", file_path = ".gitlab/renovate.json", document = "{}", embedded = "false", commit_sha = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", source_sha256 = "" }
+    }
+  }
+  variables {
+    project_ids     = { platform = "42" }
+    gitlab_projects = [{ name = "platform", renovate = { enabled = true } }]
+  }
+  assert {
+    condition     = output.source_branches["platform"] != run.same_policy_has_stable_revision_branch.source_branches["platform"]
+    error_message = "Moving the active config must create a branch with a fresh snapshot baseline."
+  }
+}
+
+run "target_branch_switch_gets_fresh_snapshot_revision" {
+  command = plan
+  variables {
+    project_ids     = { platform = "42" }
+    gitlab_projects = [{ name = "platform", default_branch = "release", renovate = { enabled = true } }]
+  }
+  assert {
+    condition     = output.source_branches["platform"] != run.same_policy_has_stable_revision_branch.source_branches["platform"]
+    error_message = "Switching target branches must create a fresh proposal baseline even when config bytes match."
   }
 }

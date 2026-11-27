@@ -1,6 +1,7 @@
 """Publish a fresh configuration proposal, avoiding stale or identical writes."""
 import hashlib
 import os
+from pathlib import Path
 import sys
 import urllib.error
 import urllib.parse
@@ -20,7 +21,14 @@ def main():
     source = os.environ['GITLAB_SOURCE_BRANCH']
     target = os.environ['GITLAB_TARGET_BRANCH']
     config_path = os.environ['GITLAB_CONFIG_PATH']
-    content = os.environ['GITLAB_CONFIG_CONTENT']
+    # Large embedded package.json files must never enter exec argv/environment.
+    try:
+        raw_content = Path(os.environ['GITLAB_CONFIG_CONTENT_FILE']).read_bytes()
+        if hashlib.sha256(raw_content).hexdigest() != os.environ['GITLAB_CONFIG_CONTENT_SHA256']:
+            raise ValueError('Publication payload checksum mismatch; create a new Terraform plan.')
+        content = raw_content.decode('utf-8')
+    except (OSError, UnicodeError):
+        raise ValueError('Cannot read the publication payload; create a new Terraform plan.') from None
     expected_digest = os.environ['GITLAB_EXPECTED_CONTENT_SHA256']
     desired_digest = digest(content)
 

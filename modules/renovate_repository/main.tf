@@ -47,7 +47,6 @@ resource "null_resource" "merge_request" {
     target_branch         = each.value.default_branch
     title                 = each.value.renovate.merge_request_title
     file_path             = data.external.existing[each.key].result.file_path
-    content               = local.file_contents[each.key]
     content_sha256        = sha256(local.file_contents[each.key])
     source_content_sha256 = data.external.existing[each.key].result.source_sha256
     script_sha256 = sha256(join("", [for script in ["ensure_merge_request.py", "read_repository_config.py", "gitlab_api.py"] :
@@ -55,19 +54,41 @@ resource "null_resource" "merge_request" {
     ]))
   }
 
+}
+
+# The resource writes content using the provider protocol, without placing it
+# in exec argv/environment. Every publication replacement materializes it first.
+resource "local_file" "proposal" {
+  for_each = local.projects
+
+  content = local.file_contents[each.key]
+  filename = "${path.root}/.terraform/renovate/${sha256(jsonencode({
+    module   = abspath(path.module)
+    endpoint = var.endpoint
+    project  = var.project_ids[each.key]
+    branch   = local.source_branches[each.key]
+  }))}.json"
+  file_permission      = "0600"
+  directory_permission = "0700"
+
+  lifecycle {
+    replace_triggered_by = [null_resource.merge_request[each.key]]
+  }
+
   provisioner "local-exec" {
     command = "python3 \"$RENOVATE_MR_SCRIPT\""
     environment = {
       RENOVATE_MR_SCRIPT             = abspath("${path.module}/scripts/ensure_merge_request.py")
-      GITLAB_API_URL                 = self.triggers.endpoint
-      GITLAB_PROJECT                 = self.triggers.project
-      GITLAB_PROJECT_URL             = self.triggers.project_url
-      GITLAB_SOURCE_BRANCH           = self.triggers.source_branch
-      GITLAB_TARGET_BRANCH           = self.triggers.target_branch
-      GITLAB_MR_TITLE                = self.triggers.title
-      GITLAB_CONFIG_PATH             = self.triggers.file_path
-      GITLAB_CONFIG_CONTENT          = self.triggers.content
-      GITLAB_EXPECTED_CONTENT_SHA256 = self.triggers.source_content_sha256
+      GITLAB_API_URL                 = null_resource.merge_request[each.key].triggers.endpoint
+      GITLAB_PROJECT                 = null_resource.merge_request[each.key].triggers.project
+      GITLAB_PROJECT_URL             = null_resource.merge_request[each.key].triggers.project_url
+      GITLAB_SOURCE_BRANCH           = null_resource.merge_request[each.key].triggers.source_branch
+      GITLAB_TARGET_BRANCH           = null_resource.merge_request[each.key].triggers.target_branch
+      GITLAB_MR_TITLE                = null_resource.merge_request[each.key].triggers.title
+      GITLAB_CONFIG_PATH             = null_resource.merge_request[each.key].triggers.file_path
+      GITLAB_CONFIG_CONTENT_FILE     = abspath(self.filename)
+      GITLAB_CONFIG_CONTENT_SHA256   = null_resource.merge_request[each.key].triggers.content_sha256
+      GITLAB_EXPECTED_CONTENT_SHA256 = null_resource.merge_request[each.key].triggers.source_content_sha256
     }
   }
 }

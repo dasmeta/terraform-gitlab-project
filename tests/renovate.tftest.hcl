@@ -7,6 +7,7 @@ override_data {
 
 mock_provider "gitlab" {}
 mock_provider "null" {}
+mock_provider "local" {}
 mock_provider "helm" {}
 
 override_module {

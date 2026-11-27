@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import threading
+import tempfile
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
@@ -22,7 +23,7 @@ def digest(value):
 class MergeRequestTests(unittest.TestCase):
     def invoke(self, target=ORIGINAL, expected=ORIGINAL, source=ORIGINAL,
                desired=DESIRED, target_path='renovate.json', config_path='renovate.json',
-               existing=False, race=False, status=200, update_status=200, mismatch=False):
+               existing=False, race=False, status=200, update_status=200, mismatch=False, corrupt=False, missing=False):
         calls = []
         state = {'mr_posts': 0}
 
@@ -91,11 +92,19 @@ class MergeRequestTests(unittest.TestCase):
             'GITLAB_TARGET_BRANCH': 'master',
             'GITLAB_MR_TITLE': 'chore: configure Renovate',
             'GITLAB_CONFIG_PATH': config_path,
-            'GITLAB_CONFIG_CONTENT': desired,
+            'GITLAB_CONFIG_CONTENT_SHA256': digest(desired),
             'GITLAB_EXPECTED_CONTENT_SHA256': digest(expected),
         })
         try:
-            result = subprocess.run(['python3', str(SCRIPT)], env=env, capture_output=True, text=True)
+            try:
+                with tempfile.TemporaryDirectory(prefix='renovate-test-content-') as temporary:
+                    payload = Path(temporary) / 'payload.json'
+                    if not missing:
+                        payload.write_bytes((desired + (' ' if corrupt else '')).encode())
+                    env['GITLAB_CONFIG_CONTENT_FILE'] = str(payload)
+                    result = subprocess.run(['python3', str(SCRIPT)], env=env, capture_output=True, text=True)
+            except OSError as exc:
+                self.fail(f'Publication must start with a large payload: {exc}')
         finally:
             server.shutdown()
             server.server_close()
@@ -186,6 +195,39 @@ class MergeRequestTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('401', result.stderr)
         self.assertEqual(len(calls), 1)
+
+    def test_formatting_only_failure_recovers_on_fresh_branch(self):
+        formatted = json.dumps(json.loads(ORIGINAL), indent=2) + '\n'
+        stale, calls = self.invoke(target=formatted, expected=ORIGINAL, source=ORIGINAL)
+        self.assertNotEqual(stale.returncode, 0)
+        self.assertIn('new Terraform plan', stale.stderr)
+        self.assertTrue(all(call[0] == 'GET' for call in calls))
+        # A new branch uses the freshly read snapshot, verified by Terraform's
+        # formatting_only_replan_gets_fresh_snapshot_branch regression.
+        retry, calls = self.invoke(target=formatted, expected=formatted, source=formatted)
+        self.assertEqual(retry.returncode, 0, retry.stderr)
+        self.assertEqual([call[0] for call in calls if call[0] != 'GET'], ['PUT', 'POST'])
+
+    def test_corrupted_payload_stops_before_network(self):
+        result, calls = self.invoke(corrupt=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('checksum mismatch', result.stderr)
+        self.assertEqual(calls, [])
+
+    def test_missing_payload_stops_before_network(self):
+        result, calls = self.invoke(missing=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('publication payload', result.stderr)
+        self.assertEqual(calls, [])
+
+    def test_large_embedded_package_json_is_published(self):
+        old = json.dumps({'name': 'example', 'renovate': {}, 'description': 'x' * (1024 * 1024)}) + '\n'
+        desired = json.dumps({'name': 'example', 'renovate': {'automerge': False}, 'description': 'x' * (1024 * 1024)}) + '\n'
+        result, calls = self.invoke(target=old, source=old, expected=old, desired=desired,
+                                    target_path='package.json', config_path='package.json')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        writes = [call for call in calls if call[0] == 'PUT']
+        self.assertEqual(writes[0][2]['content'], desired)
 
     def test_wrong_authority_stops_before_network(self):
         result, calls = self.invoke(mismatch=True)

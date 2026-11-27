@@ -34,6 +34,10 @@ Terraform-owned CI files are protected from updates by exact file rules derived
 from generator outputs. Existing Renovate schedules/rules and supported config
 locations are preserved; an ownership record permits later removal of generated additions.
 Each changed effective policy uses a fresh content-revision proposal branch.
+The revision also includes the original file hash/path so a new plan recovers
+after formatting-only edits. Publication payloads are materialized on apply
+through hashicorp/local instead of process environment; run terraform init when
+upgrading to install that provider.
 Discovery and branch creation use the same commit SHA. Publication rejects a
 saved plan when the active configuration has since changed, and skips identical
 already-merged files before writing. API helpers validate the endpoint against

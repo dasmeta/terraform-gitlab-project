@@ -56,8 +56,10 @@ main.tf) for managed credentials; never paste the token into source YAML.
 Keep the existing group/CI/approval definitions alongside these opt-ins. The root
 uses actual generator outputs to exclude its owned CI paths, including customized
 file names, while retaining manually owned CI. Existing Renovate configuration
-is merged rather than reset. Identical generated policies have stable proposal
-revisions; subsequent changes branch from the current target.
+is merged rather than reset. Identical generated policies and original source
+bytes/path have stable proposal revisions; source edits select a fresh snapshot
+branch. Run terraform init when upgrading to install hashicorp/local for
+apply-time publication payload files.
 
 For config-only use omit renovate.install; for independent worker installation
 use modules/renovate and pass the root renovate_repositories output explicitly.

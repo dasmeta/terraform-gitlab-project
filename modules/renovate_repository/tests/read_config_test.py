@@ -3,6 +3,7 @@ import importlib.util
 import hashlib
 import json
 import os
+import secrets
 import subprocess
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -148,7 +149,7 @@ class ReadConfigTests(unittest.TestCase):
 
     def test_literal_credentials_do_not_enter_terraform_state(self):
         with self.assertRaisesRegex(ValueError, 'Secret'):
-            self.read({'renovate.json': '{"hostRules":[{"password":"do-not-output"}]}'})
+            self.read({'renovate.json': json.dumps({'hostRules': [{'password': secrets.token_urlsafe(24)}]})})
 
     def test_malformed_ownership_record_fails_safely(self):
         for record in ({'version': 1, 'fields': []}, {'version': 1, 'fields': {'ignorePaths': None}}):

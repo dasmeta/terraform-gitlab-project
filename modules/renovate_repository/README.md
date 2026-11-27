@@ -58,8 +58,8 @@ For JSONC/JSON5 syntax install Python's optional json5 package in that runner.
 The proposal serializes those documents as JSON with two-space indentation and
 a trailing newline, preserving their settings and path. This also applies to
 embedded package.json configurations. Comments and original whitespace are not
-retained. Formatting runs locally per repository using the existing Python 3
-runtime; it needs no additional provider or package. Discovery follows
+retained. Formatting itself uses the existing Python 3 runtime locally per
+repository. Discovery follows
 [Renovate's GitLab file precedence](https://github.com/renovatebot/renovate/blob/44.247.2/lib/config/app-strings.ts);
 custom worker `configFileNames` are outside this module's interface.
 Malformed formats or existing literal credentials fail before configuration writes;
@@ -71,11 +71,14 @@ new defaults are merged, preserving distinct manual additions. This lets shared
 presets, custom managers and generated-path exclusions be removed as well as added.
 Do not edit/delete the ownership record by hand; malformed records fail safely.
 
-Each effective config revision uses source_branch as a prefix plus a file-content hash.
-Changed file bytes, including formatting changes, get a fresh branch from the
-exact target commit inspected during discovery, avoiding stale squash-merge
-ancestry. Every discovery request uses that captured commit SHA. Unchanged files
-keep the same revision, even when unrelated target commits are added.
+Each proposal uses source_branch as a prefix plus a hash of the desired content,
+the original raw file hash, its path and the target branch. Source edits, including formatting-only
+changes, get a fresh branch from the exact target commit inspected during
+discovery. A new plan after a rejected stale plan can therefore recover even
+when the generated JSON is identical. Merging a proposal can also change this
+snapshot revision once. Unrelated target commits keep the same revision when
+the source bytes/path and desired content are unchanged. Every discovery request
+uses the captured commit SHA.
 
 Before publishing, the helper checks the current active config path and exact
 original document bytes against the plan, including the whole package.json for
@@ -89,6 +92,18 @@ differ. Existing open MRs are reused. An identical already-merged config returns
 success before attempting any write, including after a deleted source branch is
 recreated. Deleting an unmerged source branch reruns publication. New revisions
 replace old proposal branches.
+
+Publication content is materialized during apply by hashicorp/local (~>2.5), with
+0600 file and 0700 directory permissions under path.root/.terraform/renovate.
+The create-time helper runs on that local_file after it is written, receiving
+only the file path and checksum in its environment. Large embedded package.json
+documents therefore do not enter exec argv/environment. The payload checksum is
+verified before API requests. The local_file is replaced whenever its
+null_resource publication marker is replaced, ensuring that retries, script
+changes and branch recreation materialize the payload before publishing.
+Run terraform init when upgrading to install the new provider. Existing proposal
+branches are replaced once to adopt snapshot-aware names. These local artifacts
+are disposable; a new plan detects missing files and recreates them on apply.
 
 This submodule requires Terraform 1.7 or newer. Upgrading from the native
 gitlab_repository_file implementation automatically forgets its legacy state
@@ -110,8 +125,10 @@ root-derived allowlist entry, not the already merged default-branch config.
 
 Run `terraform init -backend=false`, `terraform test`, and
 `python3 -m unittest discover -s tests -p '*_test.py'`. Terraform tests mock GitLab
-and null resources and override remote repository reads; the local JSON formatter
-runs normally. Python tests use fixtures/local fake HTTP only.
+and null/local resources and override remote repository reads; the local JSON
+formatter runs normally. Python tests use fixtures/local fake HTTP and isolated
+Terraform plans/local-file applies in temporary directories. Those resource
+tests use offline installed providers and skip when prerequisites are absent.
 No Git add, commit, push or live installation is part of these commands.
 
 For an offline check against the chart's Renovate version (44.247.2), install
@@ -142,6 +159,7 @@ local platform and extract-only dry-run without inherited bot/cloud credentials.
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.7 |
 | <a name="requirement_external"></a> [external](#requirement\_external) | ~> 2.3 |
 | <a name="requirement_gitlab"></a> [gitlab](#requirement\_gitlab) | ~> 19.0 |
+| <a name="requirement_local"></a> [local](#requirement\_local) | ~> 2.5 |
 | <a name="requirement_null"></a> [null](#requirement\_null) | ~> 3.2 |
 
 ## Providers
@@ -150,6 +168,7 @@ local platform and extract-only dry-run without inherited bot/cloud credentials.
 |------|---------|
 | <a name="provider_external"></a> [external](#provider\_external) | 2.4.2 |
 | <a name="provider_gitlab"></a> [gitlab](#provider\_gitlab) | 19.5.0 |
+| <a name="provider_local"></a> [local](#provider\_local) | 2.9.1 |
 | <a name="provider_null"></a> [null](#provider\_null) | 3.3.2 |
 
 ## Modules
@@ -161,6 +180,7 @@ No modules.
 | Name | Type |
 |------|------|
 | [gitlab_branch.this](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs/resources/branch) | resource |
+| [local_file.proposal](https://registry.terraform.io/providers/hashicorp/local/latest/docs/resources/file) | resource |
 | [null_resource.merge_request](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [external_external.existing](https://registry.terraform.io/providers/hashicorp/external/latest/docs/data-sources/external) | data source |
 | [external_external.formatted](https://registry.terraform.io/providers/hashicorp/external/latest/docs/data-sources/external) | data source |
@@ -181,5 +201,5 @@ No modules.
 | Name | Description |
 |------|-------------|
 | <a name="output_configurations"></a> [configurations](#output\_configurations) | Generated nonsecret Renovate repository configurations indexed by project name. |
-| <a name="output_source_branches"></a> [source\_branches](#output\_source\_branches) | Content-revision branches holding configuration proposals, created from the captured target commit for each policy revision. |
+| <a name="output_source_branches"></a> [source\_branches](#output\_source\_branches) | Snapshot-revision proposal branches derived from desired content, original source hash, file path and target branch, created from the captured target commit. |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
