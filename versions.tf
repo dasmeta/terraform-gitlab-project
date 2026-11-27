@@ -1,7 +1,11 @@
 terraform {
-  required_version = ">= 1.3"
+  required_version = ">= 1.9"
 
   required_providers {
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.3"
+    }
     gitlab = {
       source  = "gitlabhq/gitlab"
       version = "~> 19.0"

@@ -12,3 +12,13 @@ output "gitlab_group_full_paths" {
   description = "Map of group key to full_path for groups created by this module (Terraform-managed only; existing groups referenced via existing_group_id are not listed here)."
   value       = { for k, m in module.gitlab_group : k => m.full_path }
 }
+
+output "renovate_repositories" {
+  description = "Explicit and opted-in managed repository paths for the shared Renovate worker."
+  value       = local.renovate_repositories
+}
+
+output "renovate_installation" {
+  description = "Shared worker installation coordinates, or null when disabled."
+  value       = module.renovate.installation
+}
